@@ -437,7 +437,6 @@ textarea{
   <button class="btn active" id="mode-select"       onclick="setMode('select')"       title="Select  [Q/Esc]">↖ Select</button>
   <button class="btn"        id="mode-move"          onclick="setMode('move')"          title="Move  [G]">✥ Move</button>
   <button class="btn"        id="mode-resize-center" onclick="setMode('resize-center')" title="Resize center  [S]">⤡ Resize</button>
-  <button class="btn"        id="mode-resize-aspect" onclick="setMode('resize-aspect')" title="Resize aspect  [A]">⊡ Aspect</button>
   <div class="tool-sep"></div>
   <span style="font-size:10px;color:#555;margin-right:2px">Create:</span>
   <button class="btn" onclick="createNode('WINDOW')"   title="Window">⊞ Win</button>
@@ -753,7 +752,7 @@ let S = {
   panX:20,panY:20,zoom:1,
   isPanning:false,panStartX:0,panStartY:0,panOriginX:0,panOriginY:0,
   opType:null,opHandle:null,opStartCanvas:{x:0,y:0},opBaseRect:null,opDragOff:{x:0,y:0},
-  modalOp:null,modalBase:null,modalStartScreen:{x:0,y:0},modalAlt:false,
+  modalOp:null,modalBase:null,modalStartScreen:{x:0,y:0},modalAlt:false,modalReturnMode:null,
   ctxX:0,ctxY:0,
 };
 
@@ -778,7 +777,7 @@ function makeNode(cls,parentId,onx,ony){
     ny:ony!=null?ony:(par?py2ny(10):0.5-d.nh/2),
     nw:d.nw, nh:d.nh,
     anchor:[0,0,0,0], pivot:[0.5,0.5],
-    visible:true, enabled:true, z:0, style:'',
+    visible:true, enabled:true, z:0, style:'', metricMode:'percent',
     onClick:'', onToggle:'', src:d.src||'',
     ...(cls==='WINDOW'?{sysBtns:{...d.sysBtns}}:{}),
     ...(d.items?{items:[...d.items]}:{}),
@@ -835,11 +834,11 @@ function setMode(m){
   document.querySelectorAll('[id^="mode-"]').forEach(b=>b.classList.remove('active'));
   const el=document.getElementById('mode-'+m); if(el)el.classList.add('active');
   updateStatusMode();
-  const cur={'select':'default','move':'crosshair','resize-center':'crosshair','resize-aspect':'crosshair'};
+  const cur={'select':'default','move':'crosshair','resize-center':'crosshair'};
   canvas.style.cursor=cur[m]||'default';
 }
 function updateStatusMode(){
-  const lbl={'select':'Select','move':'Move (G)','resize-center':'Resize center (S)','resize-aspect':'Resize aspect (A)'};
+  const lbl={'select':'Select','move':'Move (G)','resize-center':'Resize center (S)'};
   let txt='Mode: '+(lbl[S.editMode]||S.editMode);
   if(S.modalOp){
     const ml={'move':'Moving','resize-center':'Resizing (center)','resize-aspect':'Resizing (aspect)'};
@@ -852,7 +851,7 @@ function updateStatusMode(){
 let _lastMouseScreen={x:0,y:0};
 function startModal(op,e){
   if(!S.selectedId)return; const n=findNode(S.selectedId); if(!n)return;
-  snapshot(); S.modalOp=op; S.modalAlt=e?e.altKey:false;
+  snapshot(); S.modalOp=op; S.modalAlt=e?e.altKey:false; S.modalReturnMode=S.editMode;
   S.modalBase={nx:n.nx,ny:n.ny,nw:n.nw,nh:n.nh};
   S.modalStartScreen={x:_lastMouseScreen.x,y:_lastMouseScreen.y};
   document.getElementById('op-hint').style.display='block';
@@ -860,16 +859,20 @@ function startModal(op,e){
 }
 function confirmModal(){
   if(!S.modalOp)return;
-  S.modalOp=null; S.modalBase=null;
+  const ret=S.modalReturnMode;
+  S.modalOp=null; S.modalBase=null; S.modalReturnMode=null;
   document.getElementById('op-hint').style.display='none';
-  updateStatusMode(); updateExport(); buildInspector();
+  if(ret) setMode(ret); else updateStatusMode();
+  updateExport(); buildInspector();
 }
 function cancelModal(){
   if(!S.modalOp)return;
   if(S.undoStack.length){ const s=JSON.parse(S.undoStack[S.undoStack.length-1]); project=s.p; S.selectedId=s.sel; S.undoStack.pop(); }
-  S.modalOp=null; S.modalBase=null;
+  const ret=S.modalReturnMode;
+  S.modalOp=null; S.modalBase=null; S.modalReturnMode=null;
   document.getElementById('op-hint').style.display='none';
-  updateStatusMode(); refresh();
+  if(ret) setMode(ret); else updateStatusMode();
+  refresh();
 }
 function tickModal(e){
   if(!S.modalOp||!S.selectedId)return;
@@ -1227,71 +1230,62 @@ vpWrap.addEventListener('mousedown',e=>{ if(e.button===1){e.preventDefault();S.i
 
 // ══════════════════════════════════════════════════════════
 // CANVAS MOUSE
+// (drag/resize-center flow ported from наработки/coord.html)
 // ══════════════════════════════════════════════════════════
 canvas.addEventListener('contextmenu',e=>{ e.preventDefault(); if(S.modalOp){cancelModal();return;} const p=toCanvas(e); S.ctxX=p.x; S.ctxY=p.y; const hit=hitTest(p.x,p.y); if(hit){S.selectedId=hit.id;draw();buildInspector();buildHierarchy();} showCtx(e.clientX,e.clientY,hit); });
 canvas.addEventListener('mousedown',e=>{
   if(e.button!==0)return; e.preventDefault();
   if(S.modalOp){confirmModal();return;}
-  if(S.opType)return;
-  const {x:mx,y:my}=toCanvas(e); const sel=findNode(S.selectedId);
-  if(S.editMode==='select'){
-    const hnd=hitHandle(mx,my,sel);
-    if(hnd){snapshot();S.opType='drag-resize';S.opHandle=hnd;S.opStartCanvas={x:mx,y:my};S.opBaseRect={nx:sel.nx,ny:sel.ny,nw:sel.nw,nh:sel.nh};return;}
-    const hit=hitTest(mx,my);
-    if(hit){if(S.selectedId!==hit.id)snapshot();S.selectedId=hit.id;const ar=absRect(hit);S.opType='drag-move';S.opDragOff={x:mx-ar.x,y:my-ar.y};S.opBaseRect={nx:hit.nx,ny:hit.ny,nw:hit.nw,nh:hit.nh};}
-    else S.selectedId=null;
-    draw();buildInspector();buildHierarchy();
-    document.getElementById('st-sel').textContent=sel?`${sel.cls}: ${sel.name}`:'No selection';
-    return;
-  }
+  const {x:mx,y:my}=toCanvas(e);
   const hit=hitTest(mx,my);
-  if(hit&&S.selectedId!==hit.id){snapshot();S.selectedId=hit.id;draw();buildInspector();buildHierarchy();return;}
-  if(!S.selectedId)return;
-  const n=findNode(S.selectedId);
-  snapshot(); S.opStartCanvas={x:mx,y:my}; S.opBaseRect={nx:n.nx,ny:n.ny,nw:n.nw,nh:n.nh};
-  const mm={'move':'drag-move','resize-center':'drag-resize-center','resize-aspect':'drag-resize-aspect'};
-  S.opType=mm[S.editMode]||'drag-move';
-  if(S.editMode==='move'){const ar=absRect(n);S.opDragOff={x:mx-ar.x,y:my-ar.y};}
+
+  if(hit){
+    if(S.selectedId!==hit.id) snapshot();
+    S.selectedId=hit.id;
+    const r=absRect(hit);
+    S.opDragOff={x:mx-r.x,y:my-r.y};
+    S.opBaseRect={nx:hit.nx,ny:hit.ny,nw:hit.nw,nh:hit.nh};
+    S.opStartCanvas={x:mx,y:my};
+
+    if(S.editMode==='move') S.opType='drag-move';
+    else if(S.editMode==='resize-center') S.opType='drag-resize-center';
+    else S.opType=null;
+  }else{
+    S.selectedId=null;
+    S.opType=null;
+  }
+
+  draw(); buildInspector(); buildHierarchy();
+  const sel=findNode(S.selectedId);
+  document.getElementById('st-sel').textContent=sel?`${sel.cls}: ${sel.name}`:'No selection';
 });
 canvas.addEventListener('mousemove',e=>{
   const {x:mx,y:my}=toCanvas(e);
   document.getElementById('st-pos').textContent=`x:${(mx/VW()*100).toFixed(2)}%  y:${(my/VH()*100).toFixed(2)}%`;
   if(S.modalOp){tickModal(e);draw();return;}
-  if(S.opType){
-    const n=findNode(S.selectedId); if(!n){S.opType=null;return;}
-    const o=S.opBaseRect, grid=effectiveGrid(e), minN=grid||S.BASE_GRID;
-    if(S.opType==='drag-move'){
-      let cox=0,coy=0; if(n.parentId){const co=clientOrigin(findNode(n.parentId));cox=co.x;coy=co.y;}
-      n.nx=sg((mx-S.opDragOff.x-cox)/VW(),grid); n.ny=sg((my-S.opDragOff.y-coy)/VH(),grid);
-    } else if(S.opType==='drag-resize'){
-      const dcx=mx-S.opStartCanvas.x, dcy=my-S.opStartCanvas.y;
-      const dnx=dcx/VW(), dny=dcy/VH(); const hid=S.opHandle.id;
-      let nx=o.nx,ny=o.ny,nw=o.nw,nh=o.nh;
-      if(hid.includes('l')){nx=sg(o.nx+dnx,grid);nw=sg(o.nw-dnx,grid);}
-      if(hid.includes('r')&&!hid.includes('l'))nw=sg(o.nw+dnx,grid);
-      if(hid.includes('t')&&!hid.includes('s')){ny=sg(o.ny+dny,grid);nh=sg(o.nh-dny,grid);}
-      if(hid.includes('b'))nh=sg(o.nh+dny,grid);
-      n.nx=nx;n.ny=ny;n.nw=Math.max(minN,nw);n.nh=Math.max(minN,nh);
-    } else if(S.opType==='drag-resize-center'){
-      const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
-      const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
-      const nnw=Math.max(minN,sg(o.nw+2*dnx,grid)),nnh=Math.max(minN,sg(o.nh+2*dny,grid));
-      n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
-    } else if(S.opType==='drag-resize-aspect'){
-      const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
-      const asp=o.nw/(o.nh||0.001), dom=Math.abs(dnx)>=Math.abs(dny)?dnx:dny*asp;
-      const nnw=Math.max(minN,sg(o.nw+dom,grid)),nnh=Math.max(minN,sg(nnw/asp,grid));
-      const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
-      n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
-    }
-    clampEvenSize(n);
-    draw();updateExport();buildInspector();return;
+  if(!S.opType||!S.selectedId){
+    if(S.editMode==='select') canvas.style.cursor=hitTest(mx,my)?'move':'crosshair';
+    return;
   }
-  if(S.editMode==='select'){
-    const sel=findNode(S.selectedId);
-    const hnd=sel?hitHandle(mx,my,sel):null;
-    canvas.style.cursor=hnd?hnd.cur:(hitTest(mx,my)?'move':'crosshair');
+
+  const n=findNode(S.selectedId); if(!n){S.opType=null;return;}
+  const o=S.opBaseRect, grid=effectiveGrid(e), minN=grid||S.BASE_GRID;
+
+  if(S.opType==='drag-move'){
+    let cox=0,coy=0;
+    if(n.parentId){const co=clientOrigin(findNode(n.parentId)); cox=co.x; coy=co.y;}
+    n.nx=sg((mx-S.opDragOff.x-cox)/VW(),grid);
+    n.ny=sg((my-S.opDragOff.y-coy)/VH(),grid);
+  }else if(S.opType==='drag-resize-center'){
+    const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
+    n.nw=Math.max(minN,sg(o.nw+dnx*2,grid));
+    n.nh=Math.max(minN,sg(o.nh+dny*2,grid));
+    n.nx=sg(o.nx-dnx,grid);
+    n.ny=sg(o.ny-dny,grid);
   }
+
+  clampEvenSize(n);
+  draw(); updateExport(); buildInspector();
 });
 canvas.addEventListener('mouseup',e=>{ if(e.button===0&&!S.modalOp)S.opType=null; });
 canvas.addEventListener('mouseleave',()=>{ if(!S.modalOp)S.opType=null; });
@@ -1363,6 +1357,7 @@ function buildInspector(){
   let h='';
   h+='<div class="pgh">Identity</div>';
   h+=r('Name',iT('name',n.name)); h+=r('Class',ro(n.cls)); h+=r('Caption',iT('caption',n.caption)); h+=r('Style',iT('style',n.style));
+  h+=r('Metrics',`<select onchange="pMetricMode(${n.id},this.value)"><option value="percent" ${(n.metricMode||'percent')==='percent'?'selected':''}>Проценты</option><option value="absolute" ${(n.metricMode||'percent')==='absolute'?'selected':''}>Абсолютные px</option></select>`);
   h+='<div class="pgh">Position &amp; Size</div>';
   h+=r('Left %',iP('nx',n.nx)); h+=r('Top %',iP('ny',n.ny));
   h+=r('Width %',iP('nw',n.nw)); h+=r('Height %',iP('nh',n.nh));
@@ -1400,6 +1395,7 @@ function buildInspector(){
 function pStr(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pBool(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pNum(id,k,v){ const n=findNode(id); if(n){n[k]=parseFloat(v)||0;draw();updateExport();} }
+function pMetricMode(id,v){ const n=findNode(id); if(n){ n.metricMode=(v==='absolute'?'absolute':'percent'); updateExport(); buildInspector(); } }
 function pPct(id,k,v){
   const n=findNode(id); if(!n)return;
   const val=parseP(v); if(!isNaN(val)){
@@ -1451,13 +1447,21 @@ function pItems(id,v){ const n=findNode(id); if(!n)return; n.items=v.split('\n')
 function stripQ(s){ s=String(s).trim(); return (s.startsWith('"')&&s.endsWith('"'))||(s.startsWith("'")&&s.endsWith("'"))?s.slice(1,-1):s; }
 function ev(v){ return stripQ(String(v)); }
 function ep(v){ return (v*100).toFixed(4)+'%'; }
+function ex(v,isY=false){ return String(Math.round(v*(isY?VH():VW()))); }
 function exportNode(n){
   const L=[]; L.push(n.name+':');
   L.push(`    class        = ${n.cls}`);
   if(n.caption) L.push(`    caption      = ${ev(n.caption)}`);
-  L.push(`    pos          = ${ep(n.nx)}, ${ep(n.ny)}`);
-  L.push(`    size         = ${ep(n.nw)}, ${ep(n.nh)}`);
-  L.push(`    ; @${VW()}x${VH()}  px=${~~(n.nx*VW())},${~~(n.ny*VH())}  sz=${~~(n.nw*VW())}x${~~(n.nh*VH())}`);
+  const mm=(n.metricMode==='absolute'?'absolute':'percent');
+  if(mm==='absolute'){
+    L.push(`    metrics      = absolute`);
+    L.push(`    pos          = ${ex(n.nx,false)}, ${ex(n.ny,true)}`);
+    L.push(`    size         = ${ex(n.nw,false)}, ${ex(n.nh,true)}`);
+  }else{
+    L.push(`    metrics      = percent`);
+    L.push(`    pos          = ${ep(n.nx)}, ${ep(n.ny)}`);
+    L.push(`    size         = ${ep(n.nw)}, ${ep(n.nh)}`);
+  }
   L.push(`    pivot        = ${n.pivot[0]}, ${n.pivot[1]}`);
   L.push(`    anchor_tl    = ${n.anchor[0]}, ${n.anchor[1]}`);
   L.push(`    anchor_br    = ${n.anchor[2]}, ${n.anchor[3]}`);
@@ -1474,7 +1478,7 @@ function exportNode(n){
   return L.join('\n');
 }
 function buildExport(){
-  const L=['; UI Layout File — UI95 Editor v0.8 / PPTK','; Coords: % of virtual canvas (resolution-independent)','; pivot: 0,0=TL  0.5,0.5=C  1,1=BR','; anchor_tl/br: fractions of parent client area',';',`@ui_file      = ${project.name}`,`@namespace    = ${project.namespace}`,`@theme        = ${project.theme}`,`@virtual_size = ${VW()} x ${VH()}`,''];
+  const L=['; UI Layout File — UI95 Editor v0.8 / PPTK','; Relative coords only: canvas size intentionally omitted','; pivot: 0,0=TL  0.5,0.5=C  1,1=BR','; anchor_tl/br: fractions of parent client area',';',`@ui_file      = ${project.name}`,`@namespace    = ${project.namespace}`,`@theme        = ${project.theme}`,''];
   project.nodes.forEach(n=>{L.push(exportNode(n));L.push('');});
   return L.join('\n');
 }
@@ -1514,7 +1518,8 @@ function parseUi(text){
     let anchor=[0,0,0,0];
     if(p.anchor_tl||p.anchor_br){ const tl=p.anchor_tl?p.anchor_tl.split(',').map(s=>parseFloat(s.trim())):[0,0]; const br=p.anchor_br?p.anchor_br.split(',').map(s=>parseFloat(s.trim())):[0,0]; anchor=[tl[0]||0,tl[1]||0,br[0]||0,br[1]||0]; }
     else if(p.anchor){ const ap=p.anchor.split(',').map(parseFloat); if(ap.length>=4&&!ap.some(isNaN))anchor=ap.slice(0,4); }
-    const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), _parentName:p.parent||null };
+    const mm = (stripQ(p.metrics||'').toLowerCase()==='absolute') ? 'absolute' : 'percent';
+    const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), metricMode:mm, _parentName:p.parent||null };
     if(cls==='WINDOW')n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
     if(cls==='LISTBOX')n.items=p.items?parseItems(p.items):['Item 1','Item 2'];
     clampEvenSize(n);
@@ -1675,12 +1680,23 @@ document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){e.preventDefault();cancelModal();return;}
     return;
   }
-  if(e.key==='g'||e.key==='G'){ e.preventDefault(); if(S.editMode==='move'&&S.selectedId)startModal('move',e); else{setMode(S.editMode==='move'?'select':'move');} return; }
-  if(e.key==='s'||e.key==='S'){ e.preventDefault(); if(S.editMode==='resize-center'&&S.selectedId)startModal('resize-center',e); else setMode(S.editMode==='resize-center'?'select':'resize-center'); return; }
-  if(e.key==='a'||e.key==='A'){ e.preventDefault(); if(S.editMode==='resize-aspect'&&S.selectedId)startModal('resize-aspect',e); else setMode(S.editMode==='resize-aspect'?'select':'resize-aspect'); return; }
+  if(e.key==='g'||e.key==='G'){
+    e.preventDefault();
+    if(!S.selectedId){ setMode('move'); return; }
+    if(S.editMode!=='move') setMode('move');
+    startModal('move',e);
+    return;
+  }
+  if(e.key==='s'||e.key==='S'){
+    e.preventDefault();
+    if(!S.selectedId){ setMode('resize-center'); return; }
+    if(S.editMode==='resize-center') startModal('resize-aspect',e);
+    else { setMode('resize-center'); startModal('resize-center',e); }
+    return;
+  }
   const step=e.shiftKey?S.COARSE_GRID:S.BASE_GRID;
   if(e.key==='Delete')deleteSelected();
-  else if(e.key==='Escape'||e.key==='q'||e.key==='Q'){setMode('select');S.selectedId=null;draw();buildInspector();buildHierarchy();}
+  else if(e.key==='Escape'||e.key==='q'||e.key==='Q'){setMode('select');draw();buildInspector();buildHierarchy();}
   else if(e.key==='Home')resetView();
     else if(e.key==='ArrowLeft'  && S.selectedId){
     snapshot(); const n=findNode(S.selectedId);
