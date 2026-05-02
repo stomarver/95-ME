@@ -1238,7 +1238,11 @@ canvas.addEventListener('mousedown',e=>{
     S.opBaseRect={nx:hit.nx,ny:hit.ny,nw:hit.nw,nh:hit.nh};
     S.opStartCanvas={x:mx,y:my};
 
-    if(S.editMode==='move') S.opType='drag-move';
+    if(S.editMode==='select'){
+      const hnd=hitHandle(mx,my,hit);
+      if(hnd){ S.opType='drag-resize'; S.opHandle=hnd; }
+      else S.opType=null;
+    } else if(S.editMode==='move') S.opType='drag-move';
     else if(S.editMode==='resize-center') S.opType='drag-resize-center';
     else S.opType=null;
   }else{
@@ -1255,14 +1259,26 @@ canvas.addEventListener('mousemove',e=>{
   document.getElementById('st-pos').textContent=`x:${(mx/VW()*100).toFixed(2)}%  y:${(my/VH()*100).toFixed(2)}%`;
   if(S.modalOp){tickModal(e);draw();return;}
   if(!S.opType||!S.selectedId){
-    if(S.editMode==='select') canvas.style.cursor=hitTest(mx,my)?'move':'crosshair';
+    if(S.editMode==='select'){
+      const sel=findNode(S.selectedId); const hnd=sel?hitHandle(mx,my,sel):null;
+      canvas.style.cursor=hnd?hnd.cur:(hitTest(mx,my)?'move':'crosshair');
+    }
     return;
   }
 
   const n=findNode(S.selectedId); if(!n){S.opType=null;return;}
   const o=S.opBaseRect, minN=modStep(e,false)||S.BASE_GRID;
 
-  if(S.opType==='drag-move'){
+  if(S.opType==='drag-resize'){
+    const stepX=modStep(e,false), stepY=modStep(e,true);
+    const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH(); const hid=S.opHandle.id;
+    let nx=o.nx,ny=o.ny,nw=o.nw,nh=o.nh;
+    if(hid.includes('l')){nx=sg(o.nx+dnx,stepX);nw=sg(o.nw-dnx,stepX);}
+    if(hid.includes('r')&&!hid.includes('l'))nw=sg(o.nw+dnx,stepX);
+    if(hid.includes('t')&&!hid.includes('s')){ny=sg(o.ny+dny,stepY);nh=sg(o.nh-dny,stepY);}
+    if(hid.includes('b'))nh=sg(o.nh+dny,stepY);
+    n.nx=nx;n.ny=ny;n.nw=Math.max(minN,nw);n.nh=Math.max(minN,nh);
+  }else if(S.opType==='drag-move'){
     let cox=0,coy=0;
     if(n.parentId){const co=clientOrigin(findNode(n.parentId)); cox=co.x; coy=co.y;}
     n.nx=sg((mx-S.opDragOff.x-cox)/VW(),modStep(e,false));
@@ -1520,7 +1536,7 @@ function parseUi(text){
   if(!nodes.length)log.push('⚠ No nodes found.'); else log.push(`✓ Parsed ${nodes.length} node(s) from "${meta.name}".`);
   return{meta,nodes,nextId,log};
 }
-function showImportModal(){ closeMenus(); document.querySelector('#import-box .win98-titlebar span').textContent='Import Layout'; document.getElementById('import-hint').style.display='block'; document.querySelector('#import-box .dialog-actions .btn').style.display=''; const ta=document.getElementById('import-ta'); ta.removeAttribute('readonly'); document.getElementById('import-modal').classList.add('show'); document.getElementById('import-log').textContent=''; }
+function showImportModal(){ closeMenus(); document.querySelector('#import-box .win98-titlebar span').textContent='Import Layout'; document.getElementById('import-hint').style.display='block'; document.querySelector('#import-box .dialog-footer .btn').style.display=''; const ta=document.getElementById('import-ta'); ta.removeAttribute('readonly'); document.getElementById('import-modal').classList.add('show'); document.getElementById('import-log').textContent=''; }
 function hideImportModal(){ document.getElementById('import-modal').classList.remove('show'); }
 function doImport(){ const text=document.getElementById('import-ta').value; if(!text.trim()){document.getElementById('import-log').textContent='⚠ Nothing to import.';return;} const result=parseUi(text); document.getElementById('import-log').textContent=result.log.join('\n'); if(!result.nodes.length)return; snapshot(); Object.assign(project,{name:result.meta.name,namespace:result.meta.namespace,theme:result.meta.theme,virtualW:result.meta.virtualW,virtualH:result.meta.virtualH,nodes:result.nodes,nextId:result.nextId||project.nextId}); S.selectedId=null; hideImportModal(); refresh(); }
 document.getElementById('ui-input').onchange=function(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{document.getElementById('import-ta').value=ev.target.result;document.getElementById('import-modal').classList.add('show');}; r.readAsText(f); e.target.value=''; };
@@ -1539,7 +1555,7 @@ function showTextModal(title,text){
   closeMenus();
   document.querySelector('#import-box .win98-titlebar span').textContent=title;
   document.getElementById('import-hint').style.display='none';
-  document.querySelector('#import-box .dialog-actions .btn').style.display='none';
+  document.querySelector('#import-box .dialog-footer .btn').style.display='none';
   document.getElementById('import-ta').value=text;
   document.getElementById('import-ta').setAttribute('readonly','readonly');
   document.getElementById('import-log').textContent='';
