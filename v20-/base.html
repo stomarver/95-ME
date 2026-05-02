@@ -395,8 +395,8 @@ textarea{
     <div class="menu-item" onclick="cmdSave()"><span>Save Project…</span><span class="menu-shortcut">Ctrl+S</span></div>
     <div class="menu-item" onclick="cmdLoad()"><span>Load Project…</span><span class="menu-shortcut">Ctrl+O</span></div>
     <div class="menu-sep"></div>
-    <div class="menu-item" onclick="cmdExportFile()"><span>Export .ui…</span></div>
-    <div class="menu-item" onclick="showImportModal()"><span>Import .ui…</span></div>
+    <div class="menu-item" onclick="cmdExportFile()"><span>Export…</span></div>
+    <div class="menu-item" onclick="showImportModal()"><span>Import…</span></div>
   </div></div>
 
   <button class="menu-btn" id="m-edit">Edit</button>
@@ -424,7 +424,8 @@ textarea{
 
   <button class="menu-btn" id="m-help">Help</button>
   <div class="dropdown" id="dd-help"><div class="dropdown-inner">
-    <div class="menu-item" onclick="showHelp()">About &amp; Controls…</div>
+    <div class="menu-item" onclick="showAbout()">About…</div>
+    <div class="menu-item" onclick="showControls()">Controls…</div>
   </div></div>
 
   <input type="file" id="file-input" style="display:none" accept=".json" onchange="loadFile(event)">
@@ -479,12 +480,12 @@ textarea{
     </div>
     <div class="splitter-v" id="spl-bottom"></div>
     <div id="bottom-panel">
-      <div class="panel-header">Export Preview (.ui)</div>
+      <div class="panel-header">Preview</div>
       <div id="export-area"></div>
       <div id="bottom-toolbar">
         <button class="btn" onclick="copyExport()">Copy</button>
-        <button class="btn" onclick="cmdExportFile()">Save .ui</button>
-        <button class="btn" onclick="showImportModal()">Import .ui</button>
+        <button class="btn" onclick="cmdExportFile()">Save</button>
+        <button class="btn" onclick="showImportModal()">Import</button>
         <span id="export-status" style="color:#666;font-size:10px;margin-left:8px"></span>
       </div>
     </div>
@@ -552,11 +553,11 @@ textarea{
   <div class="win98-dialog" id="import-box">
     <div class="win98-dialog-inner">
       <div class="win98-titlebar">
-        <span>Import .ui Layout</span>
+        <span>Import Layout</span>
         <div class="win98-close-btn" onclick="hideImportModal()">✕</div>
       </div>
       <div class="dialog-body">
-        <div style="font-size:10px;color:#444">Paste .ui text, or
+        <div style="font-size:10px;color:#444">Paste layout text, or
           <button class="btn" style="font-size:10px;padding:0 5px" onclick="document.getElementById('ui-input').click()">Open file…</button>
         </div>
         <textarea id="import-ta" placeholder="; ui file&#10;@ui_file = my_screen&#10;&#10;my_btn:&#10;    class   = BUTTON&#10;    caption = Click me&#10;    pos     = 10%, 20%&#10;    size    = 15%, 5%"></textarea>
@@ -788,25 +789,15 @@ function childrenOf(pid){ return project.nodes.filter(n=>n.parentId===pid); }
 function topLevel(){ return project.nodes.filter(n=>!n.parentId); }
 
 // ── Grid ──────────────────────────────────────────────────
-function effectiveGrid(e){
-  if(!S.snapGrid) return 0;
-  if(e&&e.altKey) return S.COARSE_GRID;
-  const b=S.BASE_GRID;
-  if(e&&e.ctrlKey&&e.shiftKey) return b/20;
-  if(e&&e.ctrlKey)              return b/10;
-  if(e&&e.shiftKey)             return b/2;
-  return b;
+function modStep(e,isY=false){
+  const alt=!!(e&&e.altKey), ctrl=!!(e&&e.ctrlKey), shift=!!(e&&e.shiftKey);
+  let q=0;
+  if(ctrl&&shift) q=10; else if(shift) q=5; else if(ctrl) q=2; else if(alt) q=1;
+  if(!q) return S.snapGrid?S.BASE_GRID:0;
+  if(alt) return q/100;
+  return q/(isY?VH():VW());
 }
-function effectiveGridModal(e){
-  if(!S.snapGrid) return 0;
-  if(S.modalAlt||(e&&e.altKey)) return S.COARSE_GRID;
-  const b=S.BASE_GRID;
-  if(e&&e.ctrlKey&&e.shiftKey) return b/20;
-  if(e&&e.ctrlKey)              return b/10;
-  if(e&&e.shiftKey)             return b/2;
-  return b;
-}
-function sg(v,grid){ return grid?Math.round(v/grid)*grid:v; }
+function sg(v,step){ return step?Math.round(v/step)*step:v; }
 function snapN(v){ return sg(v,S.snapGrid?S.BASE_GRID:0); }
 // Приводит nw и nh к чётному пиксельному значению.
 // Не меняет положение (nx, ny).
@@ -877,27 +868,27 @@ function cancelModal(){
 function tickModal(e){
   if(!S.modalOp||!S.selectedId)return;
   const n=findNode(S.selectedId); if(!n)return;
-  const o=S.modalBase, grid=effectiveGridModal(e);
+  const o=S.modalBase;
   const dsx=_lastMouseScreen.x-S.modalStartScreen.x, dsy=_lastMouseScreen.y-S.modalStartScreen.y;
   const dcx=dsx/S.zoom, dcy=dsy/S.zoom;
   const dnx=dcx/VW(), dny=dcy/VH();
-  const minN=grid||S.BASE_GRID;
+  const minN=modStep(e,false)||S.BASE_GRID;
   if(e) S.modalAlt=e.altKey;
   const hint=document.getElementById('op-hint');
   if(S.modalOp==='move'){
-    n.nx=sg(o.nx+dnx,grid); n.ny=sg(o.ny+dny,grid);
+    n.nx=sg(o.nx+dnx,modStep(e,false)); n.ny=sg(o.ny+dny,modStep(e,true));
     hint.textContent=`Move  Δx:${(dnx*100).toFixed(2)}%  Δy:${(dny*100).toFixed(2)}%`;
   } else if(S.modalOp==='resize-center'){
     const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
-    const nnw=Math.max(minN,sg(o.nw+2*dnx,grid)), nnh=Math.max(minN,sg(o.nh+2*dny,grid));
-    n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
+    const nnw=Math.max(minN,sg(o.nw+2*dnx,modStep(e,false))), nnh=Math.max(minN,sg(o.nh+2*dny,modStep(e,true)));
+    n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,modStep(e,false));n.ny=sg(cy-nnh/2,modStep(e,true));
     hint.textContent=`Resize  w:${(nnw*100).toFixed(2)}%  h:${(nnh*100).toFixed(2)}%`;
   } else if(S.modalOp==='resize-aspect'){
     const aspect=o.nw/(o.nh||0.001);
     const dom=Math.abs(dnx)>=Math.abs(dny)?dnx:dny*aspect;
-    const nnw=Math.max(minN,sg(o.nw+dom,grid)), nnh=Math.max(minN,sg(nnw/aspect,grid));
+    const nnw=Math.max(minN,sg(o.nw+dom,modStep(e,false))), nnh=Math.max(minN,sg(nnw/aspect,modStep(e,true)));
     const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
-    n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
+    n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,modStep(e,false));n.ny=sg(cy-nnh/2,modStep(e,true));
     hint.textContent=`Resize (${aspect.toFixed(2)})  w:${(nnw*100).toFixed(2)}%`;
   }
   // Автокоррекция размера для чётности при центрировании
@@ -1269,19 +1260,19 @@ canvas.addEventListener('mousemove',e=>{
   }
 
   const n=findNode(S.selectedId); if(!n){S.opType=null;return;}
-  const o=S.opBaseRect, grid=effectiveGrid(e), minN=grid||S.BASE_GRID;
+  const o=S.opBaseRect, minN=modStep(e,false)||S.BASE_GRID;
 
   if(S.opType==='drag-move'){
     let cox=0,coy=0;
     if(n.parentId){const co=clientOrigin(findNode(n.parentId)); cox=co.x; coy=co.y;}
-    n.nx=sg((mx-S.opDragOff.x-cox)/VW(),grid);
-    n.ny=sg((my-S.opDragOff.y-coy)/VH(),grid);
+    n.nx=sg((mx-S.opDragOff.x-cox)/VW(),modStep(e,false));
+    n.ny=sg((my-S.opDragOff.y-coy)/VH(),modStep(e,true));
   }else if(S.opType==='drag-resize-center'){
     const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
-    n.nw=Math.max(minN,sg(o.nw+dnx*2,grid));
-    n.nh=Math.max(minN,sg(o.nh+dny*2,grid));
-    n.nx=sg(o.nx-dnx,grid);
-    n.ny=sg(o.ny-dny,grid);
+    n.nw=Math.max(minN,sg(o.nw+dnx*2,modStep(e,false)));
+    n.nh=Math.max(minN,sg(o.nh+dny*2,modStep(e,true)));
+    n.nx=sg(o.nx-dnx,modStep(e,false));
+    n.ny=sg(o.ny-dny,modStep(e,true));
   }
 
   clampEvenSize(n);
@@ -1357,7 +1348,7 @@ function buildInspector(){
   let h='';
   h+='<div class="pgh">Identity</div>';
   h+=r('Name',iT('name',n.name)); h+=r('Class',ro(n.cls)); h+=r('Caption',iT('caption',n.caption)); h+=r('Style',iT('style',n.style));
-  h+=r('Metrics',`<select onchange="pMetricMode(${n.id},this.value)"><option value="percent" ${(n.metricMode||'percent')==='percent'?'selected':''}>Проценты</option><option value="absolute" ${(n.metricMode||'percent')==='absolute'?'selected':''}>Абсолютные px</option></select>`);
+  h+=r('Metrics',`<select onchange="pMetricMode(${n.id},this.value)"><option value="percent" ${(n.metricMode||'percent')==='percent'?'selected':''}>percent</option><option value="absolute" ${(n.metricMode||'percent')==='absolute'?'selected':''}>pixel</option></select>`);
   h+='<div class="pgh">Position &amp; Size</div>';
   h+=r('Left %',iP('nx',n.nx)); h+=r('Top %',iP('ny',n.ny));
   h+=r('Width %',iP('nw',n.nw)); h+=r('Height %',iP('nh',n.nh));
@@ -1478,7 +1469,7 @@ function exportNode(n){
   return L.join('\n');
 }
 function buildExport(){
-  const L=['; UI Layout File — UI95 Editor v0.8 / PPTK','; Relative coords only: canvas size intentionally omitted','; pivot: 0,0=TL  0.5,0.5=C  1,1=BR','; anchor_tl/br: fractions of parent client area',';',`@ui_file      = ${project.name}`,`@namespace    = ${project.namespace}`,`@theme        = ${project.theme}`,''];
+  const L=[`@ui_file      = ${project.name}`,''];
   project.nodes.forEach(n=>{L.push(exportNode(n));L.push('');});
   return L.join('\n');
 }
@@ -1544,36 +1535,24 @@ function cmdLoad(){ document.getElementById('file-input').click(); }
 function loadFile(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{try{project=JSON.parse(ev.target.result);S.selectedId=null;refresh();}catch{alert('Invalid project file.');}}; r.readAsText(f); e.target.value=''; }
 function cmdExportFile(){ const b=new Blob([buildExport()],{type:'text/plain'}); const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=project.name+'.ui';a.click(); }
 
-function showHelp(){
-  alert(
-    'UI95 Editor v0.8 — PPTK\n\n'+
-    'MODES\n'+
-    '  Q / Esc  — Select\n'+
-    '  G        — Move (toggle; press again to start modal op)\n'+
-    '  S        — Resize center\n'+
-    '  A        — Resize aspect\n\n'+
-    'MODAL OPS  (G/S/A active + selection)\n'+
-    '  Move mouse  — real-time edit\n'+
-    '  LMB/Enter   — confirm\n'+
-    '  RMB/Esc     — cancel (undo)\n'+
-    '  Alt         — coarse 1% grid\n\n'+
-    'SNAP GRID\n'+
-    '  default     — 0.25%\n'+
-    '  Shift       — 0.125%\n'+
-    '  Ctrl        — 0.025%\n'+
-    '  Ctrl+Shift  — 0.0125%\n'+
-    '  Alt         — 1% (whole percent)\n\n'+
-    'VIEWPORT\n'+
-    '  Scroll         — pan\n'+
-    '  Shift+Scroll   — pan H\n'+
-    '  Ctrl+Scroll    — zoom\n'+
-    '  MMB drag       — pan\n'+
-    '  Home           — reset\n'+
-    '  Ctrl+0         — 100%\n\n'+
-    'GIZMOS\n'+
-    '  Orange ⊕  — pivot (0,0=TL  0.5,0.5=C)\n'+
-    '  Cyan ◇ TL/BR — anchor points in parent'
-  );
+function showAbout(){
+  document.getElementById('import-ta').value='UI95 Editor v0.8\nWin98-style layout editor and preview tool.';
+  document.getElementById('import-log').textContent='';
+  showImportModal();
+}
+function showControls(){
+  document.getElementById('import-ta').value=
+    'Controls\n'+
+    'Q / Esc - Select\n'+
+    'G - Move (starts immediately)\n'+
+    'S - Resize center (double S = aspect)\n'+
+    'Delete - Remove selected\n'+
+    'Ctrl = 2px step\n'+
+    'Shift = 5px step\n'+
+    'Ctrl+Shift = 10px step\n'+
+    'Alt + modifier = whole percent steps';
+  document.getElementById('import-log').textContent='';
+  showImportModal();
 }
 
 // ══════════════════════════════════════════════════════════
