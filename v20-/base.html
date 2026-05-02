@@ -1377,6 +1377,7 @@ function parseP(s){ s=String(s).trim(); return s.endsWith('%')?parseFloat(s)/100
 const P9=[['top_left',0,0],['top_center',0.5,0],['top_right',1,0],['center_left',0,0.5],['center',0.5,0.5],['center_right',1,0.5],['bottom_left',0,1],['bottom_center',0.5,1],['bottom_right',1,1]];
 function p9Name(x,y){ const f=P9.find(a=>Math.abs(a[1]-x)<0.001&&Math.abs(a[2]-y)<0.001); return f?f[0]:'center'; }
 function p9Vec(name){ const f=P9.find(a=>a[0]===name); return f?[f[1],f[2]]:[0.5,0.5]; }
+function p9Token(x,y){ const n=p9Name(x,y); if(n!=='center' || (Math.abs(x-0.5)<0.001&&Math.abs(y-0.5)<0.001) || [0,1].includes(x) || [0,1].includes(y)) { const f=P9.find(a=>Math.abs(a[1]-x)<0.001&&Math.abs(a[2]-y)<0.001); if(f) return f[0]; } return `${(x*100).toFixed(2)}%, ${(y*100).toFixed(2)}%`; }
 function buildInspector(){
   const el=document.getElementById('inspector');
   const n=findNode(S.selectedId);
@@ -1401,7 +1402,8 @@ function buildInspector(){
   h+=r('Top px',`<input type="number" value="${~~(n.ny*VH())}" oninput="pPx(${n.id},'ny',this.value,true)">`);
   h+=r('Width px',`<input type="number" value="${~~(n.nw*VW())}" oninput="pPx(${n.id},'nw',this.value,false,true)">`);
   h+=r('Height px',`<input type="number" value="${~~(n.nh*VH())}" oninput="pPx(${n.id},'nh',this.value,true,true)">`);
-  h+=r('Right%',ro(fmtP(n.nx+n.nw))); h+=r('Bottom%',ro(fmtP(n.ny+n.nh)));
+  h+=r('Right %',`<input type="text" value="${fmtP(n.nx+n.nw)}" oninput="pEdge(${n.id},'right',this.value)">`);
+  h+=r('Bottom %',`<input type="text" value="${fmtP(n.ny+n.nh)}" oninput="pEdge(${n.id},'bottom',this.value)">`);
   h+='<div class="pgh">Pivot (%)</div>';
   h+=r('Point',`<select onchange="setPivotPoint(${n.id},this.value)">${P9.map(p=>`<option value="${p[0]}" ${p9Name(n.pivot[0],n.pivot[1])===p[0]?'selected':''}>${p[0]}</option>`).join('')}</select>`);
   h+=r('x%, y%',ro(`${(n.pivot[0]*100).toFixed(0)}%, ${(n.pivot[1]*100).toFixed(0)}%`));
@@ -1433,6 +1435,7 @@ function pStr(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();
 function pBool(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pNum(id,k,v){ const n=findNode(id); if(n){n[k]=parseFloat(v)||0;draw();updateExport();} }
 function pPx(id,k,v,isY,isSize){ const n=findNode(id); if(!n)return; let px=parseInt(v)||0; if(isSize&&px%2!==0)px+=1; const d=isY?VH():VW(); n[k]=px/d; if(isSize)clampEvenSize(n); draw();updateExport();buildInspector(); }
+function pEdge(id,edge,v){ const n=findNode(id); if(!n)return; const val=parseP(v); if(isNaN(val))return; if(edge==='right') n.nw=Math.max(S.BASE_GRID,val-n.nx); else n.nh=Math.max(S.BASE_GRID,val-n.ny); clampEvenSize(n); draw();updateExport();buildInspector(); }
 function pMetricMode(id,v){ const n=findNode(id); if(n){ n.metricMode=(v==='absolute'?'absolute':'percent'); updateExport(); buildInspector(); } }
 function pPct(id,k,v){
   const n=findNode(id); if(!n)return;
@@ -1504,9 +1507,8 @@ function exportNode(n){
     L.push(`    pos          = ${ep(n.nx)}, ${ep(n.ny)}`);
     L.push(`    size         = ${ep(n.nw)}, ${ep(n.nh)}`);
   }
-  L.push(`    pivot        = ${p9Name(n.pivot[0],n.pivot[1])}`);
-  L.push(`    anchor_tl    = ${p9Name(n.anchor[0],n.anchor[1])}`);
-  L.push(`    anchor_br    = ${p9Name(n.anchor[2],n.anchor[3])}`);
+  L.push(`    pivot        = ${p9Token(n.pivot[0],n.pivot[1])}`);
+  L.push(`    anchor       = ${p9Token(n.anchor[0],n.anchor[1])}`);
   const sf=[]; if(!n.visible)sf.push('WS_INVISIBLE'); if(!n.enabled)sf.push('WS_DISABLED');
   if(n.z) L.push(`    z_order      = ${n.z}`);
   if(sf.length) L.push(`    dwStyle      = ${sf.join(' | ')}`);
@@ -1558,8 +1560,8 @@ function parseUi(text){
     if(p.rect||p.ltrb){ const pts=(p.rect||p.ltrb).split(/[\s,]+/).filter(Boolean); if(pts.length>=4){const l=toN(pts[0],false),t=toN(pts[1],true),r2=toN(pts[2],false),b=toN(pts[3],true);nx=l;ny=t;nw=r2-l;nh=b-t;} }
     let pivot=[0.5,0.5]; if(p.pivot){ if(String(p.pivot).includes(',')){ const pp=p.pivot.split(',').map(s=>parseFloat(s.trim())); if(pp.length>=2&&!pp.some(isNaN))pivot=[Math.max(0,Math.min(1,pp[0])),Math.max(0,Math.min(1,pp[1]))]; } else pivot=p9Vec(stripQ(p.pivot)); }
     let anchor=[0,0,0,0];
-    if(p.anchor_tl||p.anchor_br){ const tl=p.anchor_tl?(String(p.anchor_tl).includes(',')?p.anchor_tl.split(',').map(s=>parseFloat(s.trim())):p9Vec(stripQ(p.anchor_tl))):[0,0]; const br=p.anchor_br?(String(p.anchor_br).includes(',')?p.anchor_br.split(',').map(s=>parseFloat(s.trim())):p9Vec(stripQ(p.anchor_br))):[0,0]; anchor=[tl[0]||0,tl[1]||0,br[0]||0,br[1]||0]; }
-    else if(p.anchor){ const ap=p.anchor.split(',').map(parseFloat); if(ap.length>=4&&!ap.some(isNaN))anchor=ap.slice(0,4); }
+    if(p.anchor){ if(String(p.anchor).includes(',')&&p.anchor.split(',').length>=4){ const ap=p.anchor.split(',').map(parseFloat); if(ap.length>=4&&!ap.some(isNaN))anchor=ap.slice(0,4); } else { const av=String(p.anchor).includes(',')?p.anchor.split(',').map(s=>parseFloat(s.trim())):p9Vec(stripQ(p.anchor)); const ax=(av[0]||0), ay=(av[1]||0); anchor=[ax,ay,ax,ay]; } }
+    else if(p.anchor_tl||p.anchor_br){ const tl=p.anchor_tl?(String(p.anchor_tl).includes(',')?p.anchor_tl.split(',').map(s=>parseFloat(s.trim())):p9Vec(stripQ(p.anchor_tl))):[0,0]; const br=p.anchor_br?(String(p.anchor_br).includes(',')?p.anchor_br.split(',').map(s=>parseFloat(s.trim())):p9Vec(stripQ(p.anchor_br))):[0,0]; anchor=[tl[0]||0,tl[1]||0,br[0]||0,br[1]||0]; }
     const mm = (stripQ(p.metrics||'').toLowerCase()==='absolute') ? 'absolute' : 'percent';
     const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), metricMode:mm, _parentName:p.parent||null };
     if(cls==='WINDOW')n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
