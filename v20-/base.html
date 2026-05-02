@@ -1374,6 +1374,9 @@ function buildHierarchy(){
 // ══════════════════════════════════════════════════════════
 function fmtP(v,d=2){ return (v*100).toFixed(d)+'%'; }
 function parseP(s){ s=String(s).trim(); return s.endsWith('%')?parseFloat(s)/100:parseFloat(s); }
+const P9=[['top_left',0,0],['top_center',0.5,0],['top_right',1,0],['center_left',0,0.5],['center',0.5,0.5],['center_right',1,0.5],['bottom_left',0,1],['bottom_center',0.5,1],['bottom_right',1,1]];
+function p9Name(x,y){ const f=P9.find(a=>Math.abs(a[1]-x)<0.001&&Math.abs(a[2]-y)<0.001); return f?f[0]:'center'; }
+function p9Vec(name){ const f=P9.find(a=>a[0]===name); return f?[f[1],f[2]]:[0.5,0.5]; }
 function buildInspector(){
   const el=document.getElementById('inspector');
   const n=findNode(S.selectedId);
@@ -1394,16 +1397,17 @@ function buildInspector(){
   h+='<div class="pgh">Position &amp; Size</div>';
   h+=r('Left %',iP('nx',n.nx)); h+=r('Top %',iP('ny',n.ny));
   h+=r('Width %',iP('nw',n.nw)); h+=r('Height %',iP('nh',n.nh));
+  h+=r('Left px',`<input type="number" value="${~~(n.nx*VW())}" oninput="pPx(${n.id},'nx',this.value,false)">`);
+  h+=r('Top px',`<input type="number" value="${~~(n.ny*VH())}" oninput="pPx(${n.id},'ny',this.value,true)">`);
+  h+=r('Width px',`<input type="number" value="${~~(n.nw*VW())}" oninput="pPx(${n.id},'nw',this.value,false,true)">`);
+  h+=r('Height px',`<input type="number" value="${~~(n.nh*VH())}" oninput="pPx(${n.id},'nh',this.value,true,true)">`);
   h+=r('Right%',ro(fmtP(n.nx+n.nw))); h+=r('Bottom%',ro(fmtP(n.ny+n.nh)));
-  h+=r('px x,y',ro(`${~~(n.nx*VW())}, ${~~(n.ny*VH())}`));
-  h+=r('px w,h',ro(`${~~(n.nw*VW())} × ${~~(n.nh*VH())}`));
-  h+='<div class="pgh">Pivot  (0..1 inside element)</div>';
-  h+=r('x, y',`<input type="text" value="${n.pivot.join(', ')}" oninput="pPivot(${n.id},this.value)" title="0,0=TL  0.5,0.5=C  1,1=BR">`);
-  h+=r('Preset',pBtn('TL',`setPivotPreset(${n.id},0,0)`)+pBtn('C',`setPivotPreset(${n.id},0.5,0.5)`)+pBtn('BR',`setPivotPreset(${n.id},1,1)`)+pBtn('TC',`setPivotPreset(${n.id},0.5,0)`)+pBtn('BC',`setPivotPreset(${n.id},0.5,1)`));
-  h+='<div class="pgh">Anchor  (0..1 in parent)</div>';
-  h+=r('TL x,y',`<input type="text" value="${n.anchor[0].toFixed(3)}, ${n.anchor[1].toFixed(3)}" oninput="pAnchorTL(${n.id},this.value)">`);
-  h+=r('BR x,y',`<input type="text" value="${n.anchor[2].toFixed(3)}, ${n.anchor[3].toFixed(3)}" oninput="pAnchorBR(${n.id},this.value)">`);
-  h+=r('Preset',pBtn('TL',`setAnchorPreset(${n.id},'tl')`)+pBtn('C',`setAnchorPreset(${n.id},'c')`)+pBtn('↔',`setAnchorPreset(${n.id},'stretch-h')`)+pBtn('↕',`setAnchorPreset(${n.id},'stretch-v')`)+pBtn('Fill',`setAnchorPreset(${n.id},'fill')`));
+  h+='<div class="pgh">Pivot (%)</div>';
+  h+=r('Point',`<select onchange="setPivotPoint(${n.id},this.value)">${P9.map(p=>`<option value="${p[0]}" ${p9Name(n.pivot[0],n.pivot[1])===p[0]?'selected':''}>${p[0]}</option>`).join('')}</select>`);
+  h+=r('x%, y%',ro(`${(n.pivot[0]*100).toFixed(0)}%, ${(n.pivot[1]*100).toFixed(0)}%`));
+  h+='<div class="pgh">Anchor (%)</div>';
+  h+=r('Point',`<select onchange="setAnchorPoint(${n.id},this.value)">${P9.map(p=>`<option value="${p[0]}" ${p9Name(n.anchor[0],n.anchor[1])===p[0]&&p9Name(n.anchor[2],n.anchor[3])===p[0]?'selected':''}>${p[0]}</option>`).join('')}</select>`);
+  h+=r('x%, y%',ro(`${(n.anchor[0]*100).toFixed(0)}%, ${(n.anchor[1]*100).toFixed(0)}%`));
   h+='<div class="pgh">Z-order &amp; State</div>';
   h+=r('Z-order',iN('z',n.z)); h+=r('Visible',ck('visible',n.visible)); h+=r('Enabled',ck('enabled',n.enabled));
   if(n.cls==='WINDOW'){
@@ -1428,6 +1432,7 @@ function buildInspector(){
 function pStr(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pBool(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pNum(id,k,v){ const n=findNode(id); if(n){n[k]=parseFloat(v)||0;draw();updateExport();} }
+function pPx(id,k,v,isY,isSize){ const n=findNode(id); if(!n)return; let px=parseInt(v)||0; if(isSize&&px%2!==0)px+=1; const d=isY?VH():VW(); n[k]=px/d; if(isSize)clampEvenSize(n); draw();updateExport();buildInspector(); }
 function pMetricMode(id,v){ const n=findNode(id); if(n){ n.metricMode=(v==='absolute'?'absolute':'percent'); updateExport(); buildInspector(); } }
 function pPct(id,k,v){
   const n=findNode(id); if(!n)return;
@@ -1464,11 +1469,8 @@ function pAnchorBR(id,v){
   }
 }
 
-function setPivotPreset(id,px,py){
-  const n=findNode(id); if(!n)return;
-  n.pivot=[Math.max(0,Math.min(1,px)),Math.max(0,Math.min(1,py))];
-  draw();updateExport();buildInspector();
-}
+function setPivotPoint(id,name){ const n=findNode(id); if(!n)return; n.pivot=p9Vec(name); draw();updateExport();buildInspector(); }
+function setAnchorPoint(id,name){ const n=findNode(id); if(!n)return; const v=p9Vec(name); n.anchor=[v[0],v[1],v[0],v[1]]; draw();updateExport();buildInspector(); }
 
 function setAnchorPreset(id,preset){
   const n=findNode(id); if(!n)return;
@@ -1502,9 +1504,9 @@ function exportNode(n){
     L.push(`    pos          = ${ep(n.nx)}, ${ep(n.ny)}`);
     L.push(`    size         = ${ep(n.nw)}, ${ep(n.nh)}`);
   }
-  L.push(`    pivot        = ${n.pivot[0]}, ${n.pivot[1]}`);
-  L.push(`    anchor_tl    = ${n.anchor[0]}, ${n.anchor[1]}`);
-  L.push(`    anchor_br    = ${n.anchor[2]}, ${n.anchor[3]}`);
+  L.push(`    pivot        = ${p9Name(n.pivot[0],n.pivot[1])}`);
+  L.push(`    anchor_tl    = ${p9Name(n.anchor[0],n.anchor[1])}`);
+  L.push(`    anchor_br    = ${p9Name(n.anchor[2],n.anchor[3])}`);
   const sf=[]; if(!n.visible)sf.push('WS_INVISIBLE'); if(!n.enabled)sf.push('WS_DISABLED');
   if(n.z) L.push(`    z_order      = ${n.z}`);
   if(sf.length) L.push(`    dwStyle      = ${sf.join(' | ')}`);
@@ -1554,9 +1556,9 @@ function parseUi(text){
     if(p.pos||p.position)[nx,ny]=parsePair(p.pos||p.position);
     if(p.size||p.dimensions)[nw,nh]=parsePair(p.size||p.dimensions);
     if(p.rect||p.ltrb){ const pts=(p.rect||p.ltrb).split(/[\s,]+/).filter(Boolean); if(pts.length>=4){const l=toN(pts[0],false),t=toN(pts[1],true),r2=toN(pts[2],false),b=toN(pts[3],true);nx=l;ny=t;nw=r2-l;nh=b-t;} }
-    let pivot=[0.5,0.5]; if(p.pivot){ const pp=p.pivot.split(',').map(s=>parseFloat(s.trim())); if(pp.length>=2&&!pp.some(isNaN))pivot=[Math.max(0,Math.min(1,pp[0])),Math.max(0,Math.min(1,pp[1]))]; }
+    let pivot=[0.5,0.5]; if(p.pivot){ if(String(p.pivot).includes(',')){ const pp=p.pivot.split(',').map(s=>parseFloat(s.trim())); if(pp.length>=2&&!pp.some(isNaN))pivot=[Math.max(0,Math.min(1,pp[0])),Math.max(0,Math.min(1,pp[1]))]; } else pivot=p9Vec(stripQ(p.pivot)); }
     let anchor=[0,0,0,0];
-    if(p.anchor_tl||p.anchor_br){ const tl=p.anchor_tl?p.anchor_tl.split(',').map(s=>parseFloat(s.trim())):[0,0]; const br=p.anchor_br?p.anchor_br.split(',').map(s=>parseFloat(s.trim())):[0,0]; anchor=[tl[0]||0,tl[1]||0,br[0]||0,br[1]||0]; }
+    if(p.anchor_tl||p.anchor_br){ const tl=p.anchor_tl?(String(p.anchor_tl).includes(',')?p.anchor_tl.split(',').map(s=>parseFloat(s.trim())):p9Vec(stripQ(p.anchor_tl))):[0,0]; const br=p.anchor_br?(String(p.anchor_br).includes(',')?p.anchor_br.split(',').map(s=>parseFloat(s.trim())):p9Vec(stripQ(p.anchor_br))):[0,0]; anchor=[tl[0]||0,tl[1]||0,br[0]||0,br[1]||0]; }
     else if(p.anchor){ const ap=p.anchor.split(',').map(parseFloat); if(ap.length>=4&&!ap.some(isNaN))anchor=ap.slice(0,4); }
     const mm = (stripQ(p.metrics||'').toLowerCase()==='absolute') ? 'absolute' : 'percent';
     const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), metricMode:mm, _parentName:p.parent||null };
