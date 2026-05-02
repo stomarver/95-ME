@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>UI95 Editor - Final Combo</title>
+<style>
+/* ── UI Shell ────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;user-select:none}
+body{
+  background:#3A6EA5;
+  font-family:"MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial,sans-serif;
+  font-size:11px;color:#000;
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;
+}
+.btn{
+  background:#C0C0C0;border:none;padding:2px 8px;cursor:pointer;
+  font-family:inherit;font-size:11px;outline:none;
+  border-top:1px solid #000;border-left:1px solid #000;
+  border-right:1px solid #000;border-bottom:1px solid #000;
+  box-shadow:inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #808080;
+}
+.btn:active,.btn.pressed{ box-shadow:inset 1px 1px 0 #808080, inset -1px -1px 0 #FFFFFF; padding:3px 7px 1px 9px; }
+.btn.active{ box-shadow:inset 1px 1px 0 #808080, inset -1px -1px 0 #FFFFFF; background:#B8B8B8; }
+
+#menubar{ background:#C0C0C0; border-bottom:1px solid #808080; display:flex; padding:2px 4px; gap:2px; flex-shrink:0; }
+.menu-btn{ background:transparent; border:1px solid transparent; padding:2px 8px; cursor:pointer; font-family:inherit; font-size:11px; }
+.menu-btn:hover{ background:#000080; color:#FFF }
+
+#toolbar{ background:#C0C0C0; border-bottom:1px solid #808080; border-top:1px solid #FFF; display:flex; align-items:center; padding:3px 6px; gap:3px; flex-shrink:0; }
+.tool-sep{ width:2px; height:22px; border-left:1px solid #808080; border-right:1px solid #FFF; margin:0 4px; }
+
+#main{ display:flex; flex:1; overflow:hidden }
+#left-panel{ width:200px; display:flex; flex-direction:column; background:#C0C0C0; border-right:1px solid #808080; }
+#center-panel{ flex:1; display:flex; flex-direction:column; overflow:hidden; background:#404040; position:relative; }
+#right-panel{ width:230px; display:flex; flex-direction:column; background:#C0C0C0; border-left:1px solid #808080; }
+
+.panel-header{ background:#000080; color:#FFF; padding:3px 6px; font-weight:bold; font-size:11px; flex-shrink:0; }
+#hierarchy{ flex:1; overflow:auto; background:#FFF; border-top:1px solid #808080; }
+.tree-item{ padding:2px 4px; cursor:pointer; display:flex; align-items:center; gap:3px; font-size:10px; border-bottom:1px solid #F0F0F0; }
+.tree-item.selected{ background:#000080; color:#FFF; }
+
+#viewport-pan{ position:absolute; transform-origin:0 0; }
+#main-canvas{ display:block; image-rendering:pixelated; background:#008080; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+
+#inspector{ flex:1; overflow-y:auto; background:#C0C0C0; }
+.pr{ display:flex; align-items:center; padding:2px 4px; border-bottom:1px solid #D4D4D4; background:#FFF; }
+.pl{ width:85px; font-size:10px; color:#333; }
+.pv input{ width:100%; font-family:inherit; font-size:11px; border:1px solid #808080; padding:1px 3px; }
+
+#bottom-panel{ height:120px; border-top:2px solid #808080; background:#000; color:#00FF00; font-family:monospace; font-size:10px; padding:5px; overflow:auto; white-space:pre; }
+
+#op-hint{
+  position:absolute; top:10px; left:50%; transform:translateX(-50%);
+  background:#FFFFE1; padding:2px 10px; border:1px solid #000; font-size:11px; z-index:100; display:none;
+}
+#statusbar{ background:#C0C0C0; border-top:2px solid #808080; padding:1px 4px; font-size:10px; display:flex; gap:10px; }
+</style>
+</head>
+<body>
+
+<div id="menubar">
+    <button class="menu-btn" onclick="cmdNew()">File</button>
+    <button class="menu-btn">Edit</button>
+    <button class="menu-btn" onclick="resetView()">View</button>
+</div>
+
+<div id="toolbar">
+    <button class="btn active" id="mode-select" onclick="setMode('select')">↖ Select</button>
+    <button class="btn" id="mode-move" onclick="setMode('move')">✥ Move</button>
+    <button class="btn" id="mode-resize-center" onclick="setMode('resize-center')">⤡ Resize</button>
+    <div class="tool-sep"></div>
+    <button class="btn" onclick="createNode('WINDOW')">+ Win</button>
+    <button class="btn" onclick="createNode('BUTTON')">+ Btn</button>
+    <button class="btn" onclick="createNode('PANEL')">+ Panel</button>
+    <div class="tool-sep"></div>
+    <button class="btn" onclick="undo()">Undo</button>
+    <button class="btn" onclick="deleteSelected()">Del</button>
+</div>
+
+<div id="main">
+    <div id="left-panel">
+        <div class="panel-header">Hierarchy</div>
+        <div id="hierarchy"></div>
+    </div>
+
+    <div id="center-panel">
+        <div id="op-hint"></div>
+        <div id="viewport-pan">
+            <canvas id="main-canvas" width="800" height="600"></canvas>
+        </div>
+    </div>
+
+    <div id="right-panel">
+        <div class="panel-header">Inspector</div>
+        <div id="inspector"></div>
+        <div class="panel-header">Export Preview</div>
+        <div id="bottom-panel"></div>
+    </div>
+</div>
+
+<div id="statusbar">
+    <span id="st-mode">Mode: Select</span>
+    <span id="st-sel">No selection</span>
+    <span id="st-pos">x: 0, y: 0</span>
+</div>
+
+<script>
+'use strict';
+
+// ── CONSTANTS & COLORS ──
+const C = {
+  face: '#C0C0C0', lt: '#FFFFFF', shadow: '#808080', dkshadow: '#404040',
+  black: '#000000', activecap: '#000080', desktop: '#008080',
+  selbg: '#000080', white: '#FFFFFF'
+};
+
+// ── PROJECT STATE ──
+let project = {
+  virtualW: 800, virtualH: 600,
+  nodes: [], nextId: 1
+};
+
+let S = {
+  selectedId: null, editMode: 'select',
+  zoom: 1, panX: 40, panY: 40,
+  undoStack: [],
+  opType: null, opBaseRect: null, opStartCanvas: {x:0, y:0}, opDragOff: {x:0, y:0}
+};
+
+const canvas = document.getElementById('main-canvas');
+const ctx = canvas.getContext('2d');
+
+// ── DRAWING PRIMITIVES ──
+function pp_rect(x,y,w,h,fill){ ctx.fillStyle=fill; ctx.fillRect(~~x,~~y,~~w,~~h); }
+function pp_hline(x,y,w,col){ pp_rect(x,y,w,1,col); }
+function pp_vline(x,y,h,col){ pp_rect(x,y,1,h,col); }
+
+function pp_raised(x,y,w,h){
+  pp_hline(x,y,w,C.lt); pp_vline(x,y,h,C.lt);
+  pp_hline(x,y+h-1,w,C.dkshadow); pp_vline(x+w-1,y,h,C.dkshadow);
+}
+
+function pp_sunken(x,y,w,h){
+  pp_hline(x,y,w,C.shadow); pp_vline(x,y,h,C.shadow);
+  pp_hline(x,y+h-1,w,C.lt); pp_vline(x+w-1,y,h,C.lt);
+}
+
+// ── CORE LOGIC ──
+const VW = () => project.virtualW;
+const VH = () => project.virtualH;
+
+function absRect(n){
+  let x = n.nx * VW(), y = n.ny * VH(), w = n.nw * VW(), h = n.nh * VH();
+  if(n.parentId) {
+    const p = project.nodes.find(i=>i.id===n.parentId);
+    if(p) { const pr = absRect(p); x += pr.x + (p.cls==='WINDOW'?2:0); y += pr.y + (p.cls==='WINDOW'?22:0); }
+  }
+  return {x, y, w, h};
+}
+
+function drawNode(n, ox=0, oy=0){
+  const r = absRect(n);
+  const x = ~~r.x, y = ~~r.y, w = ~~r.w, h = ~~r.h;
+
+  if(n.cls === 'WINDOW'){
+    pp_rect(x,y,w,h,C.face); pp_raised(x,y,w,h);
+    pp_rect(x+2,y+2,w-4,18,C.activecap); // Titlebar
+    ctx.fillStyle = "#FFF"; ctx.font = "bold 10px Tahoma"; ctx.fillText(n.name, x+5, y+14);
+  } else if(n.cls === 'BUTTON'){
+    pp_rect(x,y,w,h,C.face); pp_raised(x,y,w,h);
+    ctx.fillStyle = "#000"; ctx.textAlign="center"; ctx.fillText(n.caption||"Button", x+w/2, y+h/2+4); ctx.textAlign="left";
+  } else {
+    pp_rect(x,y,w,h,C.face); pp_sunken(x,y,w,h);
+  }
+
+  if(S.selectedId === n.id){
+    ctx.strokeStyle = "#FFF"; ctx.setLineDash([2,2]); ctx.strokeRect(x-1,y-1,w+2,h+2); ctx.setLineDash([]);
+  }
+}
+
+function refresh(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  pp_rect(0,0,VW(),VH(),C.desktop);
+  project.nodes.forEach(n => drawNode(n));
+  buildHierarchy();
+  buildInspector();
+  updateExport();
+  applyView();
+}
+
+function setMode(m){
+  S.editMode = m;
+  document.querySelectorAll('#toolbar .btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('mode-'+m).classList.add('active');
+  document.getElementById('st-mode').textContent = "Mode: " + m;
+}
+
+// ── INTERACTION ──
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / S.zoom;
+  const my = (e.clientY - rect.top) / S.zoom;
+
+  const hit = [...project.nodes].reverse().find(n => {
+    const r = absRect(n);
+    return mx >= r.x && mx <= r.x+r.w && my >= r.y && my <= r.y+r.h;
+  });
+
+  if(hit){
+    S.selectedId = hit.id;
+    S.opType = S.editMode === 'move' ? 'drag' : (S.editMode === 'resize-center' ? 'resize' : null);
+    const r = absRect(hit);
+    S.opDragOff = {x: mx - r.x, y: my - r.y};
+    S.opBaseRect = {nx: hit.nx, ny: hit.ny, nw: hit.nw, nh: hit.nh};
+    S.opStartCanvas = {x: mx, y: my};
+  } else {
+    S.selectedId = null;
+  }
+  refresh();
+});
+
+window.addEventListener('mousemove', e => {
+  if(!S.opType || !S.selectedId) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / S.zoom;
+  const my = (e.clientY - rect.top) / S.zoom;
+  const n = project.nodes.find(i=>i.id===S.selectedId);
+
+  if(S.opType === 'drag'){
+    n.nx = (mx - S.opDragOff.x) / VW();
+    n.ny = (my - S.opDragOff.y) / VH();
+  } else if(S.opType === 'resize'){
+    const dx = (mx - S.opStartCanvas.x) / VW();
+    const dy = (my - S.opStartCanvas.y) / VH();
+    n.nw = Math.max(0.02, S.opBaseRect.nw + dx*2);
+    n.nh = Math.max(0.02, S.opBaseRect.nh + dy*2);
+    n.nx = S.opBaseRect.nx - dx;
+    n.ny = S.opBaseRect.ny - dy;
+  }
+  refresh();
+});
+
+window.addEventListener('mouseup', () => { S.opType = null; });
+
+// ── UI HELPERS ──
+function createNode(cls){
+  const n = { id: project.nextId++, cls, name: cls.toLowerCase()+project.nextId, nx: 0.1, ny: 0.1, nw: 0.2, nh: 0.1, caption: 'New '+cls };
+  project.nodes.push(n);
+  S.selectedId = n.id;
+  refresh();
+}
+
+function deleteSelected(){
+    if(!S.selectedId) return;
+    project.nodes = project.nodes.filter(n => n.id !== S.selectedId);
+    S.selectedId = null;
+    refresh();
+}
+
+function buildHierarchy(){
+    const h = document.getElementById('hierarchy');
+    h.innerHTML = project.nodes.map(n => `<div class="tree-item ${n.id===S.selectedId?'selected':''}" onclick="selectNode(${n.id})">${n.name} [${n.cls}]</div>`).join('');
+}
+
+function selectNode(id){ S.selectedId = id; refresh(); }
+
+function buildInspector(){
+    const ins = document.getElementById('inspector');
+    const n = project.nodes.find(i=>i.id===S.selectedId);
+    if(!n) { ins.innerHTML = '<div style="padding:10px; color:#808080">Select an object</div>'; return; }
+
+    ins.innerHTML = `
+        <div class="pr"><span class="pl">Name</span><div class="pv"><input type="text" value="${n.name}" oninput="updateProp('name', this.value)"></div></div>
+        <div class="pr"><span class="pl">Caption</span><div class="pv"><input type="text" value="${n.caption||''}" oninput="updateProp('caption', this.value)"></div></div>
+        <div class="pr"><span class="pl">X (%)</span><div class="pv"><input type="number" step="0.01" value="${n.nx.toFixed(3)}" oninput="updateProp('nx', parseFloat(this.value))"></div></div>
+        <div class="pr"><span class="pl">Y (%)</span><div class="pv"><input type="number" step="0.01" value="${n.ny.toFixed(3)}" oninput="updateProp('ny', parseFloat(this.value))"></div></div>
+    `;
+}
+
+function updateProp(k, v){
+    const n = project.nodes.find(i=>i.id===S.selectedId);
+    if(n) n[k] = v;
+    refresh();
+}
+
+function updateExport(){
+    const area = document.getElementById('bottom-panel');
+    let txt = "; Generated UI\n";
+    project.nodes.forEach(n => {
+        txt += `\n[${n.name}]\n  class = ${n.cls}\n  pos = ${(n.nx*100).toFixed(2)}%, ${(n.ny*100).toFixed(2)}%\n  size = ${(n.nw*100).toFixed(2)}%, ${(n.nh*100).toFixed(2)}%\n`;
+    });
+    area.textContent = txt;
+}
+
+function applyView(){
+    const pan = document.getElementById('viewport-pan');
+    pan.style.transform = `translate(${S.panX}px, ${S.panY}px) scale(${S.zoom})`;
+}
+
+function resetView(){ S.zoom=1; S.panX=40; S.panY=40; applyView(); }
+
+// ── KEYBOARD ──
+window.addEventListener('keydown', e => {
+    if(e.key === 'Delete') deleteSelected();
+    if(e.key === 'g') setMode('move');
+    if(e.key === 's') setMode('resize-center');
+    if(e.key === 'q') setMode('select');
+});
+
+// Init
+refresh();
+resetView();
+</script>
+</body>
+</html>

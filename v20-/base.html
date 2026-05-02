@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>UI95 Editor</title>
+<style>
+/* ══════════════════════════════════════════════════════════
+   WIN98 UI KIT  (strict 98.css metrics)
+   ══════════════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0;user-select:none}
+
+body{
+  background:#3A6EA5;
+  font-family:"Pixelated MS Sans Serif","MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial,sans-serif;
+  font-size:11px;color:#222;           /* classic Win98 text colour */
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;
+  -webkit-font-smoothing:none;         /* disable subpixel AA */
+}
+
+/* ── Win98 BUTTON (raised) ─────────────────────────────── */
+/* ── Win98 BUTTON (raised, flexible width) ──────────────── */
+.btn {
+  box-sizing: border-box;
+  border: none;
+  background: #C0C0C0;
+  box-shadow: inset -1px -1px #0a0a0a, inset 1px 1px #ffffff,
+              inset -2px -2px #808080,   inset 2px 2px #dfdfdf;
+  border-radius: 0;
+  /* гибкая ширина: минимум только для читаемости, но не растягивает */
+  min-width: auto;
+  min-height: auto;
+  padding: 1px 6px;               /* достаточно для пиксельного отступа */
+  font-family: inherit;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:active,
+.btn.pressed {
+  box-shadow: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a,
+              inset -2px -2px #dfdfdf,   inset 2px 2px #808080;
+  padding: 2px 5px 0 7px;         /* сохраняем визуальный размер */
+}
+.btn.active {
+  box-shadow: inset -1px -1px #ffffff, inset 1px 1px #0a0a0a,
+              inset -2px -2px #dfdfdf,   inset 2px 2px #808080;
+}
+.btn:focus {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+/* ── INPUT fields (sunken) ──────────────────────────────── */
+input[type=text],input[type=number]{
+  font-family:inherit;font-size:11px;
+  background:#fff;
+  border:none;
+  box-shadow:inset -1px -1px #ffffff,inset 1px 1px #808080,
+             inset -2px -2px #dfdfdf,inset 2px 2px #0a0a0a;
+  padding:3px 4px;                     /* 98.css exact */
+  outline:none;width:100%;
+  height:21px;                         /* standard */
+}
+input[type=number]{height:22px}        /* 1px extra for spinners */
+input[type=text]:focus,input[type=number]:focus{
+  outline:1px dotted #000080;
+}
+
+select{
+  font-family:inherit;font-size:11px;background:#fff;
+  border:none;
+  box-shadow:inset -1px -1px #ffffff,inset 1px 1px #808080,
+             inset -2px -2px #dfdfdf,inset 2px 2px #0a0a0a;
+  padding:3px 4px;outline:none;width:100%;
+  height:21px;
+}
+select:focus{outline:1px dotted #000080}
+
+input[type=checkbox]{
+  width:auto;cursor:pointer;
+  accent-color:#000080;
+}
+
+textarea{
+  font-family:"Courier New",monospace;font-size:10px;
+  background:#fff;border:none;
+  box-shadow:inset -1px -1px #ffffff,inset 1px 1px #808080,
+             inset -2px -2px #dfdfdf,inset 2px 2px #0a0a0a;
+  padding:3px 4px;
+  outline:none;resize:vertical;
+}
+
+/* ── Menubar ────────────────────────────────────────────── */
+#menubar{
+  background:#C0C0C0;
+  border-bottom:1px solid #808080;
+  display:flex;align-items:center;padding:2px 4px;gap:2px;
+  flex-shrink:0;position:relative;z-index:200;
+}
+.menu-btn{
+  background:transparent;border:1px solid transparent;
+  padding:2px 8px;cursor:pointer;
+  font-family:inherit;font-size:11px;
+}
+.menu-btn:hover,.menu-btn.open{
+  background:#000080;color:#fff;
+}
+
+/* Dropdown (raised window) */
+.dropdown{
+  position:absolute;top:100%;background:#C0C0C0;
+  border:none;
+  box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #dfdfdf,
+             inset -2px -2px #808080,inset 2px 2px #ffffff;
+  min-width:200px;display:none;z-index:300;
+}
+.dropdown.show{display:block}
+/* inner wrapper – invisible */
+.dropdown-inner{border:none;background:transparent}
+
+.menu-item{
+  padding:3px 24px 3px 20px;cursor:pointer;font-size:11px;
+  white-space:nowrap;display:flex;justify-content:space-between;gap:16px;
+}
+.menu-item:hover{background:#000080;color:#fff}
+.menu-item.disabled{color:#808080;cursor:default;pointer-events:none}
+.menu-sep{height:1px;background:#808080;margin:3px 2px;border-bottom:1px solid #fff}
+.menu-shortcut{color:#808080;font-size:10px}
+.menu-item:hover .menu-shortcut{color:#AAC}
+
+/* ── Toolbar ────────────────────────────────────────────── */
+#toolbar{
+  background:#C0C0C0;
+  border-bottom:1px solid #808080;
+  border-top:1px solid #fff;
+  display:flex;align-items:center;padding:3px 6px;gap:3px;
+  flex-shrink:0;flex-wrap:wrap;
+}
+.tool-sep{
+  width:2px;height:22px;
+  border-left:1px solid #808080;border-right:1px solid #fff;
+  margin:0 4px;
+}
+#toolbar .btn{padding:2px 7px;font-size:11px}
+
+/* ── Main layout ────────────────────────────────────────── */
+#main{display:flex;flex:1;overflow:hidden}
+#left-panel{
+  width:190px;min-width:80px;
+  display:flex;flex-direction:column;flex-shrink:0;
+  background:#C0C0C0;
+  border-right:1px solid #808080;
+}
+#center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:200px}
+#right-panel{
+  width:215px;min-width:100px;
+  display:flex;flex-direction:column;flex-shrink:0;
+  background:#C0C0C0;
+  border-left:1px solid #808080;
+}
+
+/* ── Panel header (title bar gradient) ──────────────────── */
+.panel-header{
+  background:linear-gradient(90deg,#000080,#1084D0);
+  color:#fff;
+  font-weight:bold;font-size:11px;
+  padding:3px 2px 3px 3px;            /* like .title-bar */
+  flex-shrink:0;
+}
+
+/* ── Hierarchy (tree-view from 98.css) ─────────────────── */
+#hierarchy{
+  flex:1;overflow:auto;
+  background:#fff;
+  box-shadow:inset -1px -1px #ffffff,inset 1px 1px #808080,
+             inset -2px -2px #dfdfdf,inset 2px 2px #0a0a0a;
+  border:none;
+  padding:6px;                         /* 98.css tree-view */
+  margin:0;
+}
+.tree-item{
+  padding:2px 4px;cursor:pointer;
+  display:flex;align-items:center;gap:3px;
+  white-space:nowrap;overflow:hidden;
+  min-height:18px;
+  border-bottom:1px solid #F0F0F0;
+}
+.tree-item:hover{background:#000080;color:#fff}
+.tree-item:hover .ntb{background:#1084D0;color:#fff}
+.tree-item.selected{background:#000080;color:#fff}
+.tree-item.selected .ntb{background:#1084D0;color:#fff}
+.tree-item.drag-over {
+  outline: 2px solid #FF6600;
+  outline-offset: -2px;
+  background: #E0E8F0;
+}
+.nicon{font-size:10px;flex-shrink:0;width:14px;text-align:center}
+.ntb{
+  font-size:9px;background:#C0C0C0;color:#444;
+  padding:0 3px;border:1px solid #808080;flex-shrink:0;
+}
+.tname{overflow:hidden;text-overflow:ellipsis;flex:1}
+.hier-toolbar{
+  display:flex;gap:2px;padding:2px 3px;background:#C0C0C0;
+  border-top:1px solid #808080;flex-shrink:0;
+}
+.hier-toolbar .btn{padding:1px 5px;font-size:10px}
+
+/* ── Viewport ───────────────────────────────────────────── */
+/* ── Viewport ───────────────────────────────────────────── */
+#viewport-wrap {
+  flex: 1;
+  overflow: hidden;
+  background: #404040;
+  position: relative;
+  image-rendering: pixelated;      /* для уверенности */
+  image-rendering: crisp-edges;
+}
+#viewport-pan {
+  position: absolute;
+  transform-origin: 0 0;
+  will-change: transform;
+  image-rendering: inherit;        /* наследует от родителя */
+}
+#main-canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ── Inspector ──────────────────────────────────────────── */
+#inspector{flex:1;overflow-y:auto;overflow-x:hidden;background:#C0C0C0}
+.pgh{
+  background:linear-gradient(90deg,#000080,#1084D0);
+  color:#fff;
+  padding:2px 7px;font-size:10px;font-weight:bold;
+}
+.pr{
+  display:flex;align-items:center;padding:1px 4px;
+  border-bottom:1px solid #D4D4D4;background:#fff;min-height:20px;
+}
+.pr:nth-child(even){background:#F4F4F8}
+.pl{
+  width:78px;flex-shrink:0;color:#333;font-size:10px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;
+}
+.pv{flex:1;min-width:0}
+.pro{font-size:10px;color:#666;padding:1px 3px;font-style:italic}
+.no-sel{
+  padding:12px 8px;color:#808080;font-size:11px;
+  font-style:italic;text-align:center;margin-top:20px;
+}
+
+/* ── Export panel ───────────────────────────────────────── */
+#bottom-panel{
+  height:140px;min-height:60px;
+  border-top:2px solid #808080;
+  display:flex;flex-direction:column;flex-shrink:0;
+}
+#export-area{
+  flex:1;background:#0D0D0D;color:#00E050;
+  font-family:"Courier New",monospace;font-size:10px;
+  padding:4px 7px;overflow:auto;white-space:pre;line-height:1.5;
+}
+#bottom-toolbar{
+  background:#C0C0C0;border-top:1px solid #808080;
+  padding:2px 5px;display:flex;gap:4px;align-items:center;flex-shrink:0;
+}
+#bottom-toolbar .btn{padding:1px 8px;font-size:11px}
+
+/* ── Splitters ──────────────────────────────────────────── */
+.splitter-h{
+  width:5px;background:#C0C0C0;cursor:col-resize;
+  border-left:1px solid #808080;border-right:1px solid #fff;flex-shrink:0;
+}
+.splitter-v{
+  height:5px;background:#C0C0C0;cursor:row-resize;
+  border-top:1px solid #808080;border-bottom:1px solid #fff;flex-shrink:0;
+}
+
+/* ── Status bar (98.css status-bar-field) ──────────────── */
+#statusbar{
+  background:#C0C0C0;border-top:1px solid #808080;
+  padding:1px 4px;font-size:10px;flex-shrink:0;display:flex;gap:1px;
+}
+.sc{
+  box-shadow:inset -1px -1px #dfdfdf,inset 1px 1px #808080;
+  flex-grow:1;
+  padding:2px 3px;
+  margin:0;
+  white-space:nowrap;
+}
+
+/* ── Context menu (raised) ─────────────────────────────── */
+#ctx-menu{
+  position:fixed;display:none;background:#C0C0C0;
+  border:none;
+  box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #dfdfdf,
+             inset -2px -2px #808080,inset 2px 2px #ffffff;
+  min-width:170px;z-index:400;
+}
+.ctx-inner{border:none;background:transparent}
+#ctx-menu.show{display:block}
+.ci{padding:3px 20px;cursor:pointer;font-size:11px;white-space:nowrap}
+.ci:hover{background:#000080;color:#fff}
+.csep{height:1px;background:#808080;border-bottom:1px solid #fff;margin:2px 4px}
+.ci.disabled{color:#808080;pointer-events:none}
+
+/* ── Modals (window from 98.css) ───────────────────────── */
+#import-modal,#canvas-modal{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.45);
+  z-index:500;align-items:center;justify-content:center;
+}
+#import-modal.show,#canvas-modal.show{display:flex}
+
+.win98-dialog{
+  background:#C0C0C0;
+  border:none;
+  box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #dfdfdf,
+             inset -2px -2px #808080,inset 2px 2px #ffffff;
+  padding:3px;                         /* .window padding */
+  display:flex;flex-direction:column;
+}
+.win98-dialog-inner{
+  border:none;background:transparent;
+  display:flex;flex-direction:column;flex:1;
+}
+.win98-titlebar{
+  background:linear-gradient(90deg,#000080,#1084D0);
+  color:#fff;
+  font-weight:bold;font-size:11px;
+  padding:3px 2px 3px 3px;             /* .title-bar */
+  display:flex;justify-content:space-between;align-items:center;
+  gap:4px;
+}
+.win98-titlebar-icon{font-size:14px;line-height:1}
+.win98-close-btn{
+  background:#C0C0C0;
+  border:none;
+  box-shadow:inset -1px -1px #0a0a0a,inset 1px 1px #ffffff,
+             inset -2px -2px #808080,inset 2px 2px #dfdfdf;
+  min-width:16px;min-height:14px;
+  padding:0;                           /* icon button */
+  font-size:9px;font-weight:bold;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:#000;flex-shrink:0;
+}
+.win98-close-btn:active{
+  box-shadow:inset -1px -1px #ffffff,inset 1px 1px #0a0a0a,
+             inset -2px -2px #dfdfdf,inset 2px 2px #808080;
+}
+.dialog-body{padding:8px;display:flex;flex-direction:column;gap:6px;overflow:hidden;flex:1}
+.dialog-footer{
+  padding:4px 8px 6px;display:flex;gap:4px;background:#C0C0C0;
+  border-top:1px solid #808080;
+}
+#import-box{width:520px;max-height:80vh}
+#canvas-box{width:300px}
+#import-ta{
+  flex:1;min-height:200px;width:100%;
+  font-family:"Courier New",monospace;font-size:10px;resize:none;
+  background:#fff;
+  border:none;
+  box-shadow:inset -1px -1px #ffffff,inset 1px 1px #808080,
+             inset -2px -2px #dfdfdf,inset 2px 2px #0a0a0a;
+  padding:4px;outline:none;
+}
+#import-log{font-size:10px;color:#800000;min-height:18px;font-family:monospace}
+.canvas-row{display:flex;align-items:center;gap:6px;font-size:11px}
+.canvas-row label{width:80px;flex-shrink:0}
+.canvas-row input{width:80px}
+
+/* ── Op hint ───────────────────────────────────────────── */
+#op-hint{
+  position:absolute;top:4px;left:50%;transform:translateX(-50%);
+  background:#FFFFE1;color:#000;font-size:11px;
+  padding:2px 10px;
+  border:none;
+  box-shadow:inset -1px -1px #ffffff,inset 1px 1px #808080,
+             inset -2px -2px #dfdfdf,inset 2px 2px #0a0a0a;
+  pointer-events:none;display:none;white-space:nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ MENUBAR ═══════════════════ -->
+<div id="menubar">
+  <button class="menu-btn" id="m-file">File</button>
+  <div class="dropdown" id="dd-file"><div class="dropdown-inner">
+    <div class="menu-item" onclick="cmdNew()"><span>New</span><span class="menu-shortcut">Ctrl+N</span></div>
+    <div class="menu-sep"></div>
+    <div class="menu-item" onclick="cmdSave()"><span>Save Project…</span><span class="menu-shortcut">Ctrl+S</span></div>
+    <div class="menu-item" onclick="cmdLoad()"><span>Load Project…</span><span class="menu-shortcut">Ctrl+O</span></div>
+    <div class="menu-sep"></div>
+    <div class="menu-item" onclick="cmdExportFile()"><span>Export .ui…</span></div>
+    <div class="menu-item" onclick="showImportModal()"><span>Import .ui…</span></div>
+  </div></div>
+
+  <button class="menu-btn" id="m-edit">Edit</button>
+  <div class="dropdown" id="dd-edit"><div class="dropdown-inner">
+    <div class="menu-item" onclick="undo()"><span>Undo</span><span class="menu-shortcut">Ctrl+Z</span></div>
+    <div class="menu-item" onclick="redo()"><span>Redo</span><span class="menu-shortcut">Ctrl+Y</span></div>
+    <div class="menu-sep"></div>
+    <div class="menu-item" onclick="duplicateSelected()"><span>Duplicate</span><span class="menu-shortcut">Ctrl+D</span></div>
+    <div class="menu-item" onclick="deleteSelected()"><span>Delete</span><span class="menu-shortcut">Del</span></div>
+    <div class="menu-sep"></div>
+    <div class="menu-item" onclick="bringToFront()"><span>Bring to Front</span></div>
+    <div class="menu-item" onclick="sendToBack()"><span>Send to Back</span></div>
+  </div></div>
+
+  <button class="menu-btn" id="m-view">View</button>
+  <div class="dropdown" id="dd-view"><div class="dropdown-inner">
+    <div class="menu-item" onclick="showCanvasModal()"><span>Canvas Settings…</span></div>
+    <div class="menu-item" onclick="toggleGrid()"><span>Toggle Grid Snap</span></div>
+    <div class="menu-sep"></div>
+    <div class="menu-item" onclick="zoomIn()"><span>Zoom In</span><span class="menu-shortcut">Ctrl++</span></div>
+    <div class="menu-item" onclick="zoomOut()"><span>Zoom Out</span><span class="menu-shortcut">Ctrl+–</span></div>
+    <div class="menu-item" onclick="zoom100()"><span>Zoom 100%</span><span class="menu-shortcut">Ctrl+0</span></div>
+    <div class="menu-item" onclick="resetView()"><span>Reset View</span><span class="menu-shortcut">Home</span></div>
+  </div></div>
+
+  <button class="menu-btn" id="m-help">Help</button>
+  <div class="dropdown" id="dd-help"><div class="dropdown-inner">
+    <div class="menu-item" onclick="showHelp()">About &amp; Controls…</div>
+  </div></div>
+
+  <input type="file" id="file-input" style="display:none" accept=".json" onchange="loadFile(event)">
+  <input type="file" id="ui-input"   style="display:none" accept=".ui,.txt" onchange="loadUiFile(event)">
+</div>
+
+<!-- ═══════════════════ TOOLBAR ═══════════════════ -->
+<div id="toolbar">
+  <span style="font-size:10px;color:#555;margin-right:2px">Mode:</span>
+  <button class="btn active" id="mode-select"       onclick="setMode('select')"       title="Select  [Q/Esc]">↖ Select</button>
+  <button class="btn"        id="mode-move"          onclick="setMode('move')"          title="Move  [G]">✥ Move</button>
+  <button class="btn"        id="mode-resize-center" onclick="setMode('resize-center')" title="Resize center  [S]">⤡ Resize</button>
+  <button class="btn"        id="mode-resize-aspect" onclick="setMode('resize-aspect')" title="Resize aspect  [A]">⊡ Aspect</button>
+  <div class="tool-sep"></div>
+  <span style="font-size:10px;color:#555;margin-right:2px">Create:</span>
+  <button class="btn" onclick="createNode('WINDOW')"   title="Window">⊞ Win</button>
+  <button class="btn" onclick="createNode('PANEL')"    title="Panel">▣ Panel</button>
+  <button class="btn" onclick="createNode('BUTTON')"   title="Button">□ Btn</button>
+  <button class="btn" onclick="createNode('STATIC')"   title="Static">A Static</button>
+  <button class="btn" onclick="createNode('IMAGE')"    title="Image">▨ Img</button>
+  <button class="btn" onclick="createNode('CHECKBOX')" title="Checkbox">☑ Check</button>
+  <button class="btn" onclick="createNode('LISTBOX')"  title="Listbox">≡ List</button>
+  <button class="btn" onclick="createNode('GROUPBOX')" title="Groupbox">▢ Group</button>
+  <div class="tool-sep"></div>
+  <button class="btn" id="btn-grid" onclick="toggleGrid()" title="Grid snap">Grid ✓</button>
+  <button class="btn" onclick="showCanvasModal()" title="Canvas size">Canvas…</button>
+  <div class="tool-sep"></div>
+  <button class="btn" onclick="undo()"           title="Ctrl+Z">↩</button>
+  <button class="btn" onclick="redo()"           title="Ctrl+Y">↪</button>
+  <button class="btn" onclick="deleteSelected()" title="Del">✕ Del</button>
+</div>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<div id="main">
+  <div id="left-panel">
+    <div class="panel-header">Hierarchy</div>
+    <div id="hierarchy"></div>
+    <div class="hier-toolbar">
+      <button class="btn" onclick="moveNodeUp()"        title="↑">↑</button>
+      <button class="btn" onclick="moveNodeDown()"      title="↓">↓</button>
+      <button class="btn" onclick="duplicateSelected()" title="Dupe">⧉</button>
+      <button class="btn" onclick="deleteSelected()"    title="Del">✕</button>
+    </div>
+  </div>
+  <div class="splitter-h" id="spl-left"></div>
+  <div id="center-panel">
+    <div class="panel-header" id="vp-header">Viewport — 800×600  |  100%</div>
+    <div id="viewport-wrap">
+      <div id="viewport-pan">
+        <canvas id="main-canvas" width="800" height="600"></canvas>
+      </div>
+      <div id="op-hint"></div>
+    </div>
+    <div class="splitter-v" id="spl-bottom"></div>
+    <div id="bottom-panel">
+      <div class="panel-header">Export Preview (.ui)</div>
+      <div id="export-area"></div>
+      <div id="bottom-toolbar">
+        <button class="btn" onclick="copyExport()">Copy</button>
+        <button class="btn" onclick="cmdExportFile()">Save .ui</button>
+        <button class="btn" onclick="showImportModal()">Import .ui</button>
+        <span id="export-status" style="color:#666;font-size:10px;margin-left:8px"></span>
+      </div>
+    </div>
+  </div>
+  <div class="splitter-h" id="spl-right"></div>
+  <div id="right-panel">
+    <div class="panel-header">Properties</div>
+    <div id="inspector">
+      <div class="no-sel">— Nothing selected —<br><br>
+        <span style="font-size:10px">Click an element in the<br>Viewport or Hierarchy</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ STATUSBAR ═══════════════════ -->
+<div id="statusbar">
+  <span class="sc" id="st-mode">Mode: Select</span>
+  <span class="sc" id="st-sel">No selection</span>
+  <span class="sc" id="st-pos">x:0%  y:0%</span>
+  <span class="sc" id="st-grid">Grid: 0.25%  ON</span>
+  <span class="sc" id="st-zoom">Zoom: 100%</span>
+</div>
+
+<!-- ═══════════════════ CONTEXT MENU ═══════════════════ -->
+<div id="ctx-menu"><div class="ctx-inner">
+  <div class="ci disabled" id="ctx-info" style="font-style:italic;font-size:10px;color:#555;pointer-events:none"></div>
+  <div class="csep"></div>
+  <div class="ci" id="ctx-dup"   onclick="duplicateSelected();hideCtx()">Duplicate</div>
+  <div class="ci" id="ctx-del"   onclick="deleteSelected();hideCtx()">Delete</div>
+  <div class="csep"></div>
+  <div class="ci" id="ctx-front" onclick="bringToFront();hideCtx()">Bring to Front</div>
+  <div class="ci" id="ctx-back"  onclick="sendToBack();hideCtx()">Send to Back</div>
+  <div class="csep"></div>
+  <div class="ci" onclick="createNodeAt('BUTTON');hideCtx()">Add Button here</div>
+  <div class="ci" onclick="createNodeAt('STATIC');hideCtx()">Add Static here</div>
+  <div class="ci" onclick="createNodeAt('PANEL');hideCtx()">Add Panel here</div>
+  <div class="ci" onclick="createNodeAt('WINDOW');hideCtx()">Add Window here</div>
+</div></div>
+
+<!-- ═══════════════════ CANVAS SETTINGS ═══════════════════ -->
+<div id="canvas-modal">
+  <div class="win98-dialog" id="canvas-box">
+    <div class="win98-dialog-inner">
+      <div class="win98-titlebar">
+        <span>Canvas Settings</span>
+        <div class="win98-close-btn" onclick="hideCanvasModal()">✕</div>
+      </div>
+      <div class="dialog-body">
+        <div class="canvas-row"><label>Width (px):</label><input type="number" id="cv-w" min="320" max="3840" step="1"></div>
+        <div class="canvas-row"><label>Height (px):</label><input type="number" id="cv-h" min="200" max="2160" step="1"></div>
+        <div style="font-size:10px;color:#555">Common: 800×600 · 1024×768 · 1280×720 · 1920×1080</div>
+        <div style="font-size:10px;color:#555">All coordinates are % — changing size is non-destructive.</div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn" onclick="applyCanvasSize()">OK</button>
+        <button class="btn" onclick="hideCanvasModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ IMPORT MODAL ═══════════════════ -->
+<div id="import-modal">
+  <div class="win98-dialog" id="import-box">
+    <div class="win98-dialog-inner">
+      <div class="win98-titlebar">
+        <span>Import .ui Layout</span>
+        <div class="win98-close-btn" onclick="hideImportModal()">✕</div>
+      </div>
+      <div class="dialog-body">
+        <div style="font-size:10px;color:#444">Paste .ui text, or
+          <button class="btn" style="font-size:10px;padding:0 5px" onclick="document.getElementById('ui-input').click()">Open file…</button>
+        </div>
+        <textarea id="import-ta" placeholder="; ui file&#10;@ui_file = my_screen&#10;&#10;my_btn:&#10;    class   = BUTTON&#10;    caption = Click me&#10;    pos     = 10%, 20%&#10;    size    = 15%, 5%"></textarea>
+        <div id="import-log"></div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn" onclick="doImport()">Import</button>
+        <button class="btn" onclick="hideImportModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ══════════════════════════════════════════════════════════
+// PPTK — Pixel-Perfect Toolkit  (renderer layer)
+// All drawing goes through these primitives.
+// Coordinates are always integers for crisp 1px lines.
+// ══════════════════════════════════════════════════════════
+
+// ── Colour palette (Win98 system colours) ─────────────────
+const C = {
+  // 3D surface
+  face:    '#C0C0C0',
+  // 3D edges
+  lt:      '#FFFFFF',   // light  (top/left highlight)
+  btface:  '#DFDFDF',   // button face inner highlight
+  shadow:  '#808080',   // shadow (inner)
+  dkshadow:'#404040',   // dark shadow (outer)
+  black:   '#000000',
+  // Window chrome
+  activecap:  '#000080',
+  activecap2: '#1084D0',
+  captxt:     '#FFFFFF',
+  // Canvas desktop
+  desktop:    '#008080',
+  // Selection
+  selbg:   '#000080',
+  seltxt:  '#FFFFFF',
+  // Misc
+  white:   '#FFFFFF',
+  gray:    '#808080',
+};
+
+// ── PPTK drawing primitives ───────────────────────────────
+let _c;  // current canvas context — set in draw()
+
+function pp_rect(x,y,w,h,fill){
+  if(w<=0||h<=0)return;
+  _c.fillStyle=fill; _c.fillRect(~~x,~~y,~~w,~~h);
+}
+function pp_hline(x,y,w,col){
+  _c.fillStyle=col; _c.fillRect(~~x,~~y,~~w,1);
+}
+function pp_vline(x,y,h,col){
+  _c.fillStyle=col; _c.fillRect(~~x,~~y,1,~~h);
+}
+
+// Standard Win98 raised button border (2-edge)
+// outer: white TL / dark-shadow BR
+// inner: button-face TL / shadow BR
+function pp_raised(x,y,w,h){
+  x=~~x;y=~~y;w=~~w;h=~~h;
+  // outer
+  pp_hline(x,y,w,C.lt);        pp_vline(x,y,h,C.lt);
+  pp_hline(x,y+h-1,w,C.dkshadow); pp_vline(x+w-1,y,h,C.dkshadow);
+  // inner
+  pp_hline(x+1,y+1,w-2,C.btface); pp_vline(x+1,y+1,h-2,C.btface);
+  pp_hline(x+1,y+h-2,w-2,C.shadow); pp_vline(x+w-2,y+1,h-2,C.shadow);
+}
+
+// Sunken (edit field, listbox, sunken panel)
+// outer: shadow TL / white BR
+// inner: dark-shadow TL / face BR
+function pp_sunken(x,y,w,h){
+  x=~~x;y=~~y;w=~~w;h=~~h;
+  pp_hline(x,y,w,C.shadow);    pp_vline(x,y,h,C.shadow);
+  pp_hline(x,y+h-1,w,C.lt);   pp_vline(x+w-1,y,h,C.lt);
+  pp_hline(x+1,y+1,w-2,C.dkshadow); pp_vline(x+1,y+1,h-2,C.dkshadow);
+  pp_hline(x+1,y+h-2,w-2,C.btface); pp_vline(x+w-2,y+1,h-2,C.btface);
+}
+
+// Flat 1px etched border (groupbox top edge style)
+function pp_etched_h(x,y,x2){
+  pp_hline(x,y,x2-x,C.shadow);
+  pp_hline(x,y+1,x2-x,C.lt);
+}
+
+// Win98 title bar — horizontal gradient left→right
+// #000080 to #1C5CB9 (classic active, 2px tall lines)
+function pp_titlebar(x,y,w,h){
+  x=~~x;y=~~y;w=~~w;h=~~h;
+  for(let i=0;i<w;i++){
+    const t=i/Math.max(w-1,1);
+    const r=Math.round(0  +t*28);
+    const g=Math.round(0  +t*92);
+    const b=Math.round(128+t*(185-128));
+    _c.fillStyle=`rgb(${r},${g},${b})`;
+    _c.fillRect(x+i,y,1,h);
+  }
+}
+
+// Draw text with Win98 system font
+function pp_text(txt,x,y,col,bold,size){
+  _c.font=(bold?'bold ':'')+`${size??11}px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial`;
+  _c.fillStyle=col;
+  _c.textBaseline='top';
+  _c.fillText(txt,~~x,~~y);
+}
+function pp_text_mid(txt,x,y,w,h,col,bold){
+  _c.font=(bold?'bold ':'')+'11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+  _c.fillStyle=col;
+  _c.textBaseline='middle';
+  _c.textAlign='center';
+  _c.fillText(txt,~~(x+w/2),~~(y+h/2));
+  _c.textAlign='left';
+  _c.textBaseline='top';
+}
+function pp_textw(txt){
+  _c.font='11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+  return _c.measureText(txt).width;
+}
+
+// ── Win98 system button glyphs (pixel-drawn) ──────────────
+function pp_sysbtn(x,y,w,h,type,pressed){
+  x=~~x;y=~~y;w=~~w;h=~~h;
+  pp_rect(x,y,w,h,C.face);
+  if(pressed){
+    pp_hline(x,y,w,C.dkshadow); pp_vline(x,y,h,C.dkshadow);
+    pp_hline(x,y+h-1,w,C.lt);   pp_vline(x+w-1,y,h,C.lt);
+  } else {
+    pp_raised(x,y,w,h);
+  }
+  const ox=pressed?1:0, oy=pressed?1:0;
+  const cx=~~(x+w/2)+ox, cy=~~(y+h/2)+oy;
+  _c.fillStyle=C.black;
+
+  if(type==='close'){
+    // Win98 X glyph — two thick diagonal lines (3px)
+    const m=4;
+    for(let d=0;d<2;d++){
+      _c.fillRect(x+m+d,y+m,1,1);
+      _c.fillRect(x+m+d+1,y+m+1,1,1);
+      _c.fillRect(x+w-m-d-2,y+m,1,1);
+      _c.fillRect(x+w-m-d-3,y+m+1,1,1);
+    }
+    for(let i=0;i<h-m*2-1;i++){
+      _c.fillRect(x+m+i,y+m+i,2,1);
+      _c.fillRect(x+w-m-i-2,y+m+i,2,1);
+    }
+  } else if(type==='minimize'){
+    // underscore bar
+    _c.fillRect(cx-4,cy+3,8,2);
+    _c.fillRect(cx-4,cy+2,8,1);
+  } else if(type==='maximize'){
+    // window outline with thick top
+    _c.strokeStyle=C.black; _c.lineWidth=1;
+    _c.strokeRect(cx-5+0.5,cy-4+0.5,10,9);
+    _c.fillRect(cx-5,cy-4,10,2);
+  } else if(type==='restore'){
+    // two overlapping rectangles
+    _c.strokeStyle=C.black; _c.lineWidth=1;
+    // back window
+    _c.strokeRect(cx-1+0.5,cy-5+0.5,8,6);
+    _c.fillRect(cx-1,cy-5,8,2);
+    // front window
+    _c.fillStyle=C.face;
+    _c.fillRect(cx-5,cy-3,8,7);
+    _c.fillStyle=C.black;
+    _c.strokeRect(cx-5+0.5,cy-3+0.5,8,7);
+    _c.fillRect(cx-5,cy-3,8,2);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// PROJECT MODEL & STATE  (unchanged from v0.7)
+// ══════════════════════════════════════════════════════════
+let project = {
+  name:'main_menu', namespace:'game.ui', theme:'win98_classic',
+  virtualW:800, virtualH:600,
+  nodes:[], nextId:1,
+  commands:['ui.close','ui.open_settings','game.start','game.quit',
+            'ui.open_report','ui.toggle_fullscreen','game.new_game']
+};
+const VW=()=>project.virtualW, VH=()=>project.virtualH;
+const px2nx=px=>px/VW(), py2ny=py=>py/VH();
+
+let S = {
+  selectedId:null, editMode:'select',
+  snapGrid:true, BASE_GRID:0.0025, COARSE_GRID:0.01,
+  undoStack:[], redoStack:[],
+  panX:20,panY:20,zoom:1,
+  isPanning:false,panStartX:0,panStartY:0,panOriginX:0,panOriginY:0,
+  opType:null,opHandle:null,opStartCanvas:{x:0,y:0},opBaseRect:null,opDragOff:{x:0,y:0},
+  modalOp:null,modalBase:null,modalStartScreen:{x:0,y:0},modalAlt:false,
+  ctxX:0,ctxY:0,
+};
+
+const DEFS = {
+  WINDOW:  {nw:px2nx(220),nh:py2ny(160),caption:'Window',   sysBtns:{close:true,minimize:false,maximize:false}},
+  PANEL:   {nw:px2nx(160),nh:py2ny(120),caption:''},
+  BUTTON:  {nw:px2nx(88), nh:py2ny(23), caption:'Button'},
+  STATIC:  {nw:px2nx(110),nh:py2ny(16), caption:'Static'},
+  IMAGE:   {nw:px2nx(64), nh:py2ny(64), caption:'', src:''},
+  CHECKBOX:{nw:px2nx(120),nh:py2ny(15), caption:'Checkbox'},
+  LISTBOX: {nw:px2nx(130),nh:py2ny(84), caption:'', items:['Item 1','Item 2','Item 3','Item 4']},
+  GROUPBOX:{nw:px2nx(160),nh:py2ny(96), caption:'Group'},
+};
+
+function makeNode(cls,parentId,onx,ony){
+  const d=DEFS[cls]||DEFS.PANEL, id=project.nextId++;
+  const par=parentId?findNode(parentId):null;
+  return {
+    id,cls,parentId:parentId||null,
+    name:cls.toLowerCase()+'_'+id, caption:d.caption||'',
+    nx:onx!=null?onx:(par?px2nx(10):0.5-d.nw/2),
+    ny:ony!=null?ony:(par?py2ny(10):0.5-d.nh/2),
+    nw:d.nw, nh:d.nh,
+    anchor:[0,0,0,0], pivot:[0.5,0.5],
+    visible:true, enabled:true, z:0, style:'',
+    onClick:'', onToggle:'', src:d.src||'',
+    ...(cls==='WINDOW'?{sysBtns:{...d.sysBtns}}:{}),
+    ...(d.items?{items:[...d.items]}:{}),
+  };
+}
+function findNode(id){ return project.nodes.find(n=>n.id===id)||null; }
+function childrenOf(pid){ return project.nodes.filter(n=>n.parentId===pid); }
+function topLevel(){ return project.nodes.filter(n=>!n.parentId); }
+
+// ── Grid ──────────────────────────────────────────────────
+function effectiveGrid(e){
+  if(!S.snapGrid) return 0;
+  if(e&&e.altKey) return S.COARSE_GRID;
+  const b=S.BASE_GRID;
+  if(e&&e.ctrlKey&&e.shiftKey) return b/20;
+  if(e&&e.ctrlKey)              return b/10;
+  if(e&&e.shiftKey)             return b/2;
+  return b;
+}
+function effectiveGridModal(e){
+  if(!S.snapGrid) return 0;
+  if(S.modalAlt||(e&&e.altKey)) return S.COARSE_GRID;
+  const b=S.BASE_GRID;
+  if(e&&e.ctrlKey&&e.shiftKey) return b/20;
+  if(e&&e.ctrlKey)              return b/10;
+  if(e&&e.shiftKey)             return b/2;
+  return b;
+}
+function sg(v,grid){ return grid?Math.round(v/grid)*grid:v; }
+function snapN(v){ return sg(v,S.snapGrid?S.BASE_GRID:0); }
+// Приводит nw и nh к чётному пиксельному значению.
+// Не меняет положение (nx, ny).
+function clampEvenSize(n) {
+  if (!n) return;
+  const rawW = Math.round(n.nw * VW());
+  const rawH = Math.round(n.nh * VH());
+  const evenW = rawW + (rawW % 2);        // +0 если чёт, +1 если нечёт
+  const evenH = rawH + (rawH % 2);
+  const newW = Math.max(2, evenW);        // минимум 2px
+  const newH = Math.max(2, evenH);
+  n.nw = newW / VW();
+  n.nh = newH / VH();
+}
+
+// ── Undo/Redo ─────────────────────────────────────────────
+function snapshot(){ S.undoStack.push(JSON.stringify({p:project,sel:S.selectedId})); if(S.undoStack.length>80)S.undoStack.shift(); S.redoStack=[]; }
+function undo(){ if(!S.undoStack.length)return; S.redoStack.push(JSON.stringify({p:project,sel:S.selectedId})); const s=JSON.parse(S.undoStack.pop()); project=s.p; S.selectedId=s.sel; refresh(); }
+function redo(){ if(!S.redoStack.length)return; S.undoStack.push(JSON.stringify({p:project,sel:S.selectedId})); const s=JSON.parse(S.redoStack.pop()); project=s.p; S.selectedId=s.sel; refresh(); }
+
+// ── Mode ──────────────────────────────────────────────────
+function setMode(m){
+  if(S.modalOp)cancelModal();
+  S.editMode=m;
+  document.querySelectorAll('[id^="mode-"]').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('mode-'+m); if(el)el.classList.add('active');
+  updateStatusMode();
+  const cur={'select':'default','move':'crosshair','resize-center':'crosshair','resize-aspect':'crosshair'};
+  canvas.style.cursor=cur[m]||'default';
+}
+function updateStatusMode(){
+  const lbl={'select':'Select','move':'Move (G)','resize-center':'Resize center (S)','resize-aspect':'Resize aspect (A)'};
+  let txt='Mode: '+(lbl[S.editMode]||S.editMode);
+  if(S.modalOp){
+    const ml={'move':'Moving','resize-center':'Resizing (center)','resize-aspect':'Resizing (aspect)'};
+    txt='● '+(ml[S.modalOp]||S.modalOp)+(S.modalAlt?' [Alt:1%]':'')+' — LMB confirm  ·  RMB/Esc cancel';
+  }
+  document.getElementById('st-mode').textContent=txt;
+}
+
+// ── Modal ops ─────────────────────────────────────────────
+let _lastMouseScreen={x:0,y:0};
+function startModal(op,e){
+  if(!S.selectedId)return; const n=findNode(S.selectedId); if(!n)return;
+  snapshot(); S.modalOp=op; S.modalAlt=e?e.altKey:false;
+  S.modalBase={nx:n.nx,ny:n.ny,nw:n.nw,nh:n.nh};
+  S.modalStartScreen={x:_lastMouseScreen.x,y:_lastMouseScreen.y};
+  document.getElementById('op-hint').style.display='block';
+  updateStatusMode();
+}
+function confirmModal(){
+  if(!S.modalOp)return;
+  S.modalOp=null; S.modalBase=null;
+  document.getElementById('op-hint').style.display='none';
+  updateStatusMode(); updateExport(); buildInspector();
+}
+function cancelModal(){
+  if(!S.modalOp)return;
+  if(S.undoStack.length){ const s=JSON.parse(S.undoStack[S.undoStack.length-1]); project=s.p; S.selectedId=s.sel; S.undoStack.pop(); }
+  S.modalOp=null; S.modalBase=null;
+  document.getElementById('op-hint').style.display='none';
+  updateStatusMode(); refresh();
+}
+function tickModal(e){
+  if(!S.modalOp||!S.selectedId)return;
+  const n=findNode(S.selectedId); if(!n)return;
+  const o=S.modalBase, grid=effectiveGridModal(e);
+  const dsx=_lastMouseScreen.x-S.modalStartScreen.x, dsy=_lastMouseScreen.y-S.modalStartScreen.y;
+  const dcx=dsx/S.zoom, dcy=dsy/S.zoom;
+  const dnx=dcx/VW(), dny=dcy/VH();
+  const minN=grid||S.BASE_GRID;
+  if(e) S.modalAlt=e.altKey;
+  const hint=document.getElementById('op-hint');
+  if(S.modalOp==='move'){
+    n.nx=sg(o.nx+dnx,grid); n.ny=sg(o.ny+dny,grid);
+    hint.textContent=`Move  Δx:${(dnx*100).toFixed(2)}%  Δy:${(dny*100).toFixed(2)}%`;
+  } else if(S.modalOp==='resize-center'){
+    const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
+    const nnw=Math.max(minN,sg(o.nw+2*dnx,grid)), nnh=Math.max(minN,sg(o.nh+2*dny,grid));
+    n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
+    hint.textContent=`Resize  w:${(nnw*100).toFixed(2)}%  h:${(nnh*100).toFixed(2)}%`;
+  } else if(S.modalOp==='resize-aspect'){
+    const aspect=o.nw/(o.nh||0.001);
+    const dom=Math.abs(dnx)>=Math.abs(dny)?dnx:dny*aspect;
+    const nnw=Math.max(minN,sg(o.nw+dom,grid)), nnh=Math.max(minN,sg(nnw/aspect,grid));
+    const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
+    n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
+    hint.textContent=`Resize (${aspect.toFixed(2)})  w:${(nnw*100).toFixed(2)}%`;
+  }
+  // Автокоррекция размера для чётности при центрировании
+  clampEvenSize(n);
+  updateStatusMode(); draw(); buildInspector();
+}
+
+// ── Commands ──────────────────────────────────────────────
+function createNode(cls){ snapshot(); const sel=findNode(S.selectedId); const pid=sel&&(sel.cls==='WINDOW'||sel.cls==='PANEL')?sel.id:null; const n=makeNode(cls,pid); clampEvenSize(n); project.nodes.push(n); S.selectedId=n.id; refresh(); }
+function createNodeAt(cls){ snapshot(); const sel=findNode(S.selectedId); const pid=sel&&(sel.cls==='WINDOW'||sel.cls==='PANEL')?sel.id:null; let cx=S.ctxX,cy=S.ctxY; if(pid){const co=clientOrigin(findNode(pid));cx-=co.x;cy-=co.y;} const n=makeNode(cls,pid,snapN(cx/VW()),snapN(cy/VH())); clampEvenSize(n); project.nodes.push(n); S.selectedId=n.id; refresh(); }
+function deleteSelected(){ if(!S.selectedId)return; snapshot(); const kill=new Set(); const q=[S.selectedId]; while(q.length){const id=q.shift();kill.add(id);project.nodes.filter(n=>n.parentId===id).forEach(n=>q.push(n.id));} project.nodes=project.nodes.filter(n=>!kill.has(n.id)); S.selectedId=null; refresh(); }
+function duplicateSelected(){ if(!S.selectedId)return; snapshot(); const o=findNode(S.selectedId); const c={...o,id:project.nextId++,name:o.name+'_copy',nx:o.nx+px2nx(16),ny:o.ny+py2ny(16)}; clampEvenSize(c); if(c.items)c.items=[...c.items]; if(c.sysBtns)c.sysBtns={...c.sysBtns}; project.nodes.push(c); S.selectedId=c.id; refresh(); }
+function bringToFront(){ if(!S.selectedId)return; snapshot(); const n=findNode(S.selectedId); const peers=project.nodes.filter(x=>x.parentId===n.parentId); n.z=(peers.length?Math.max(...peers.map(x=>x.z)):0)+1; refresh(); }
+function sendToBack(){  if(!S.selectedId)return; snapshot(); const n=findNode(S.selectedId); const peers=project.nodes.filter(x=>x.parentId===n.parentId); n.z=(peers.length?Math.min(...peers.map(x=>x.z)):0)-1; refresh(); }
+function moveNodeUp(){ if(!S.selectedId)return; const n=findNode(S.selectedId); const sibs=project.nodes.filter(s=>s.parentId===n.parentId); const idx=sibs.indexOf(n); if(idx<1)return; snapshot(); const a=project.nodes.indexOf(sibs[idx-1]),b=project.nodes.indexOf(n); [project.nodes[a],project.nodes[b]]=[project.nodes[b],project.nodes[a]]; refresh(); }
+function moveNodeDown(){ if(!S.selectedId)return; const n=findNode(S.selectedId); const sibs=project.nodes.filter(s=>s.parentId===n.parentId); const idx=sibs.indexOf(n); if(idx>=sibs.length-1)return; snapshot(); const a=project.nodes.indexOf(n),b=project.nodes.indexOf(sibs[idx+1]); [project.nodes[a],project.nodes[b]]=[project.nodes[b],project.nodes[a]]; refresh(); }
+function toggleGrid(){ S.snapGrid=!S.snapGrid; document.getElementById('btn-grid').textContent='Grid '+(S.snapGrid?'✓':'✗'); document.getElementById('st-grid').textContent='Grid: 0.25%  '+(S.snapGrid?'ON':'OFF'); draw(); }
+
+// ══════════════════════════════════════════════════════════
+// GEOMETRY
+// ══════════════════════════════════════════════════════════
+const TB_H=20, WIN_BX=2, WIN_BY=22;
+function absRect(n){
+  let x=n.nx*VW(), y=n.ny*VH();
+  if(n.parentId){ const p=findNode(n.parentId); if(p){ const pr=absRect(p); x+=pr.x+(p.cls==='WINDOW'?WIN_BX:0); y+=pr.y+(p.cls==='WINDOW'?WIN_BY:0); } }
+  return {x,y,w:n.nw*VW(),h:n.nh*VH()};
+}
+function clientOrigin(n){ const r=absRect(n); return {x:r.x+(n.cls==='WINDOW'?WIN_BX:0),y:r.y+(n.cls==='WINDOW'?WIN_BY:0)}; }
+function parentClientRect(n){
+  if(!n.parentId) return {x:0,y:0,w:VW(),h:VH()};
+  const p=findNode(n.parentId); if(!p) return {x:0,y:0,w:VW(),h:VH()};
+  const pr=absRect(p);
+  return {x:pr.x+(p.cls==='WINDOW'?WIN_BX:0), y:pr.y+(p.cls==='WINDOW'?WIN_BY:0), w:p.nw*VW()-(p.cls==='WINDOW'?WIN_BX*2:0), h:p.nh*VH()-(p.cls==='WINDOW'?WIN_BY+WIN_BX:0)};
+}
+const HR=4;
+function getHandles(ax,ay,w,h){ return [{id:'tl',cx:ax,cy:ay,cur:'nw-resize'},{id:'tm',cx:ax+w/2,cy:ay,cur:'n-resize'},{id:'tr',cx:ax+w,cy:ay,cur:'ne-resize'},{id:'ml',cx:ax,cy:ay+h/2,cur:'w-resize'},{id:'mr',cx:ax+w,cy:ay+h/2,cur:'e-resize'},{id:'bl',cx:ax,cy:ay+h,cur:'sw-resize'},{id:'bm',cx:ax+w/2,cy:ay+h,cur:'s-resize'},{id:'br',cx:ax+w,cy:ay+h,cur:'se-resize'}]; }
+function hitHandle(mx,my,n){ if(!n)return null; const r=absRect(n); for(const h of getHandles(r.x,r.y,r.w,r.h)) if(Math.abs(mx-h.cx)<=HR+2&&Math.abs(my-h.cy)<=HR+2)return h; return null; }
+function hitTest(mx,my){ const sorted=[...project.nodes].sort((a,b)=>b.z-a.z||(project.nodes.indexOf(b)-project.nodes.indexOf(a))); for(const n of sorted){ if(!n.visible)continue; const {x,y,w,h}=absRect(n); if(mx>=x&&mx<=x+w&&my>=y&&my<=y+h)return n; } return null; }
+
+// ══════════════════════════════════════════════════════════
+// PPTK WIDGET RENDERERS
+// ══════════════════════════════════════════════════════════
+const canvas=document.getElementById('main-canvas');
+const ctx=canvas.getContext('2d');
+ctx.imageSmoothingEnabled=false;
+
+// ── WINDOW ────────────────────────────────────────────────
+function drawWindow(n,ox,oy){
+  const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
+  const w=~~(n.nw*VW()), h=~~(n.nh*VH());
+  if(w<4||h<4)return;
+
+  // Drop shadow (2×2 offset, black, semi-transparent)
+  _c.fillStyle='rgba(0,0,0,0.45)';
+  _c.fillRect(x+3,y+3,w,h);
+
+  // Outer 1px black border
+  pp_hline(x,y,w,C.black); pp_hline(x,y+h-1,w,C.black);
+  pp_vline(x,y,h,C.black); pp_vline(x+w-1,y,h,C.black);
+
+  // Window frame fill + 3D raised border (inset 1px)
+  pp_rect(x+1,y+1,w-2,h-2,C.face);
+  pp_raised(x+1,y+1,w-2,h-2);
+
+  // Title bar (inset by frame = x+2, y+2, w-4, TB_H)
+  pp_titlebar(x+2,y+2,w-4,TB_H);
+
+  // Title text — 1px shadow
+  _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+  _c.fillStyle='#000040'; _c.textBaseline='middle';
+  _c.fillText(n.caption,x+7,y+2+TB_H/2+1);
+  _c.fillStyle=C.captxt;
+  _c.fillText(n.caption,x+6,y+2+TB_H/2);
+
+  // System buttons — right-aligned in titlebar
+  const sb=n.sysBtns||{}; let bx=x+w-4;
+  if(sb.close)   { bx-=16; pp_sysbtn(bx,y+3,15,14,'close');    }
+  if(sb.maximize){ bx-=16; pp_sysbtn(bx,y+3,15,14,'maximize'); }
+  if(sb.minimize){ bx-=16; pp_sysbtn(bx,y+3,15,14,'minimize'); }
+
+  // Client area — sunken inside frame
+  const cy2=y+2+TB_H;
+  const cw=w-4, ch=h-TB_H-4;
+  pp_rect(x+2,cy2,cw,ch,C.face);
+  pp_sunken(x+2,cy2,cw,ch);
+
+  // Recurse children
+  childrenOf(n.id).forEach(c=>drawNode(c,x+WIN_BX,cy2));
+}
+
+// ── PANEL ─────────────────────────────────────────────────
+function drawPanel(n,ox,oy){
+  const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
+  const w=~~(n.nw*VW()), h=~~(n.nh*VH());
+  pp_rect(x,y,w,h,C.face);
+  pp_raised(x,y,w,h);
+  childrenOf(n.id).forEach(c=>drawNode(c,x,y));
+}
+
+// ── BUTTON ────────────────────────────────────────────────
+function drawButton(n,ox,oy){
+  const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
+  const w=~~(n.nw*VW()), h=~~(n.nh*VH());
+  // Black outer border
+  pp_hline(x,y,w,C.black); pp_hline(x,y+h-1,w,C.black);
+  pp_vline(x,y,h,C.black); pp_vline(x+w-1,y,h,C.black);
+  pp_rect(x+1,y+1,w-2,h-2,C.face);
+  pp_raised(x+1,y+1,w-2,h-2);
+  // Focus rect (1px dotted inner)
+  _c.save(); _c.strokeStyle=C.black; _c.lineWidth=1; _c.setLineDash([1,1]);
+  _c.strokeRect(x+3.5,y+3.5,w-7,h-7); _c.setLineDash([]); _c.restore();
+  // Label
+  pp_text_mid(n.caption,x,y,w,h,n.enabled?C.black:C.gray,false);
+}
+
+// ── STATIC ────────────────────────────────────────────────
+function drawStatic(n,ox,oy){
+  const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
+  pp_text(n.caption,x,y+2,n.enabled?C.black:C.gray,false);
+}
+
+// ── CHECKBOX ──────────────────────────────────────────────
+function drawCheckbox(n,ox,oy){
+  const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
+  const h=~~(n.nh*VH());
+  // box
+  pp_rect(x+1,y+1,12,12,C.white);
+  pp_sunken(x+1,y+1,12,12);
+  // label
+  pp_text(n.caption,x+18,y+(h-11)/2,n.enabled?C.black:C.gray,false);
+}
+
+// ── IMAGE ─────────────────────────────────────────────────
+function drawImage(n,ox,oy){
+  const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
+  const w=~~(n.nw*VW()), h=~~(n.nh*VH());
+  // outer border
+  pp_hline(x,y,w,C.black); pp_hline(x,y+h-1,w,C.black);
+  pp_vline(x,y,h,C.black); pp_vline(x+w-1,y,h,C.black);
+  pp_sunken(x+1,y+1,w-2,h-2);
+  // checkerboard placeholder
+  const step=8;
+  for(let iy=2;iy<h-2;iy+=step) for(let ix=2;ix<w-2;ix+=step){
+    _c.fillStyle=((Math.floor((ix-2)/step)+(Math.floor((iy-2)/step)))%2===0)?'#5A5A5A':'#7A7A7A';
+    _c.fillRect(x+ix,y+iy,Math.min(step,w-2-ix),Math.min(step,h-2-iy));
+  }
+  if(n.src){
+    _c.font='10px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+    const tw=Math.min(_c.measureText(n.src).width+8,w-8);
+    _c.fillStyle='rgba(0,0,0,0.72)';
+    _c.fillRect(~~(x+(w-tw)/2),~~(y+h/2-8),~~tw,15);
+    _c.fillStyle=C.white; _c.textBaseline='middle'; _c.textAlign='center';
+    _c.fillText(n.src,~~(x+w/2),~~(y+h/2)); _c.textAlign='left';
+  }
+}
+
+// ── LISTBOX ───────────────────────────────────────────────
+function drawListbox(n,ox,oy){
+  const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
+  const w=~~(n.nw*VW()), h=~~(n.nh*VH());
+  const SBW=16, rowH=15;
+  pp_rect(x,y,w,h,C.white);
+  pp_sunken(x,y,w,h);
+  const vis=Math.floor((h-2)/rowH);
+  const items=n.items||[];
+  _c.font='11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+  _c.textBaseline='top';
+  for(let i=0;i<Math.min(vis,items.length);i++){
+    if(i===0){pp_rect(x+2,y+2+i*rowH,w-SBW-3,rowH,C.selbg); _c.fillStyle=C.seltxt;}
+    else _c.fillStyle=C.black;
+    _c.fillText(items[i],x+5,y+3+i*rowH);
+  }
+  // scrollbar track
+  const sbx=x+w-SBW;
+  pp_rect(sbx,y,SBW,h,C.face);
+  pp_sunken(sbx,y,SBW,h);
+  // up btn
+  pp_rect(sbx,y,SBW,16,C.face); pp_raised(sbx,y,SBW,16);
+  pp_text_mid('▲',sbx,y,SBW,16,C.black,false);
+  // down btn
+  pp_rect(sbx,y+h-16,SBW,16,C.face); pp_raised(sbx,y+h-16,SBW,16);
+  pp_text_mid('▼',sbx,y+h-16,SBW,16,C.black,false);
+}
+
+// ── GROUPBOX ──────────────────────────────────────────────
+function drawGroupbox(n,ox,oy){
+  const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
+  const w=~~(n.nw*VW()), h=~~(n.nh*VH());
+  const TH=12, lx=x+10;
+  _c.font='11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+  const tw=~~Math.min(_c.measureText(n.caption).width+8,w-20);
+
+  // border — two-pass etched frame (shadow then light offset)
+  _c.strokeStyle=C.shadow; _c.lineWidth=1;
+  _c.beginPath();
+  _c.moveTo(lx,y+TH/2); _c.lineTo(x,y+TH/2); _c.lineTo(x,y+h-1);
+  _c.lineTo(x+w-1,y+h-1); _c.lineTo(x+w-1,y+TH/2); _c.lineTo(lx+tw,y+TH/2);
+  _c.stroke();
+  _c.strokeStyle=C.lt;
+  _c.beginPath();
+  _c.moveTo(lx+1,y+TH/2+1); _c.lineTo(x+1,y+TH/2+1); _c.lineTo(x+1,y+h);
+  _c.lineTo(x+w,y+h); _c.lineTo(x+w,y+TH/2+1); _c.lineTo(lx+tw+1,y+TH/2+1);
+  _c.stroke();
+
+  // label clear + text
+  pp_rect(lx,y,tw,TH+1,C.face);
+  pp_text(n.caption,lx+4,y+1,C.black,false);
+  childrenOf(n.id).forEach(c=>drawNode(c,x,y));
+}
+
+// ── dispatch ──────────────────────────────────────────────
+function drawNode(n,ox=0,oy=0){
+  if(!n.visible)return;
+  _c=ctx; // ensure context is set
+  if(n.cls==='WINDOW')   drawWindow(n,ox,oy);
+  else if(n.cls==='PANEL')    drawPanel(n,ox,oy);
+  else if(n.cls==='BUTTON')   drawButton(n,ox,oy);
+  else if(n.cls==='STATIC')   drawStatic(n,ox,oy);
+  else if(n.cls==='CHECKBOX') drawCheckbox(n,ox,oy);
+  else if(n.cls==='IMAGE')    drawImage(n,ox,oy);
+  else if(n.cls==='LISTBOX')  drawListbox(n,ox,oy);
+  else if(n.cls==='GROUPBOX') drawGroupbox(n,ox,oy);
+  _c.textBaseline='alphabetic'; _c.textAlign='left'; _c.lineWidth=1;
+}
+
+// ── Selection overlay ─────────────────────────────────────
+function drawSelection(n){
+  if(!n)return; const {x,y,w,h}=absRect(n);
+  _c=ctx;
+  // marching ants
+  _c.save();
+  _c.setLineDash([4,3]); _c.strokeStyle='#000080'; _c.lineWidth=1;
+  _c.strokeRect(x-.5,y-.5,w+1,h+1);
+  _c.strokeStyle='#FFFFFF'; _c.lineDashOffset=4;
+  _c.strokeRect(x-.5,y-.5,w+1,h+1);
+  _c.lineDashOffset=0; _c.setLineDash([]); _c.restore();
+
+  // handles (only in select mode)
+  if(S.editMode==='select'&&!S.modalOp){
+    getHandles(x,y,w,h).forEach(hnd=>{
+      _c.fillStyle='#000080'; _c.fillRect(~~(hnd.cx-HR),~~(hnd.cy-HR),HR*2,HR*2);
+      _c.strokeStyle='#FFFFFF'; _c.lineWidth=1; _c.strokeRect(~~(hnd.cx-HR),~~(hnd.cy-HR),HR*2,HR*2);
+    });
+  }
+
+  // Pivot — orange crosshair + circle
+  const pvx=~~(x+n.pivot[0]*w), pvy=~~(y+n.pivot[1]*h);
+  _c.strokeStyle='#FF6600'; _c.lineWidth=1.5;
+  _c.beginPath(); _c.moveTo(pvx-8,pvy); _c.lineTo(pvx+8,pvy); _c.stroke();
+  _c.beginPath(); _c.moveTo(pvx,pvy-8); _c.lineTo(pvx,pvy+8); _c.stroke();
+  _c.lineWidth=1;
+  _c.beginPath(); _c.arc(pvx,pvy,3,0,Math.PI*2); _c.stroke();
+  // white outline for contrast
+  _c.strokeStyle='rgba(255,255,255,0.7)'; _c.lineWidth=0.5;
+  _c.beginPath(); _c.moveTo(pvx-7,pvy); _c.lineTo(pvx+7,pvy); _c.stroke();
+  _c.beginPath(); _c.moveTo(pvx,pvy-7); _c.lineTo(pvx,pvy+7); _c.stroke();
+
+  // Anchors — cyan diamonds in parent space
+  const pc=parentClientRect(n);
+  const ax0=~~(pc.x+n.anchor[0]*pc.w), ay0=~~(pc.y+n.anchor[1]*pc.h);
+  const ax1=~~(pc.x+n.anchor[2]*pc.w), ay1=~~(pc.y+n.anchor[3]*pc.h);
+  // lines
+  _c.save(); _c.strokeStyle='rgba(0,200,255,.75)'; _c.lineWidth=1; _c.setLineDash([3,3]);
+  _c.beginPath(); _c.moveTo(ax0,ay0); _c.lineTo(pvx,pvy); _c.stroke();
+  _c.beginPath(); _c.moveTo(ax1,ay1); _c.lineTo(pvx,pvy); _c.stroke();
+  _c.setLineDash([]); _c.restore();
+  // diamonds
+  function aDiamond(dx,dy,lbl){
+    _c.strokeStyle='#00C8FF'; _c.lineWidth=1; _c.fillStyle='rgba(0,200,255,.3)';
+    _c.beginPath(); _c.moveTo(dx,dy-7); _c.lineTo(dx+5,dy); _c.lineTo(dx,dy+7); _c.lineTo(dx-5,dy); _c.closePath(); _c.fill(); _c.stroke();
+    _c.font='8px "MS Sans Serif",Tahoma,Arial'; _c.fillStyle='#00C8FF';
+    _c.textAlign='center'; _c.textBaseline='top'; _c.fillText(lbl,dx,dy+8);
+    _c.textAlign='left'; _c.textBaseline='alphabetic';
+  }
+  aDiamond(ax0,ay0,'TL'); aDiamond(ax1,ay1,'BR');
+}
+
+// ── Grid ──────────────────────────────────────────────────
+function drawGrid(){
+  if(!S.snapGrid)return;
+  const w=VW(), h=VH();
+  // fine grid (0.25%)
+  const gx=w*S.BASE_GRID, gy=h*S.BASE_GRID;
+  if(gx>=1&&gy>=1){
+    _c.fillStyle='rgba(0,0,0,0.10)';
+    for(let x=0;x<=w;x+=gx) _c.fillRect(~~x,0,1,h);
+    for(let y=0;y<=h;y+=gy) _c.fillRect(0,~~y,w,1);
+  }
+  // coarse 1% grid (more visible)
+  const gx1=w*0.01, gy1=h*0.01;
+  _c.fillStyle='rgba(0,0,0,0.22)';
+  for(let x=0;x<=w;x+=gx1) _c.fillRect(~~x,0,1,h);
+  for(let y=0;y<=h;y+=gy1) _c.fillRect(0,~~y,w,1);
+}
+
+// ── Main draw call ────────────────────────────────────────
+function draw(){
+  _c=ctx;
+  if(canvas.width!==VW()||canvas.height!==VH()){ canvas.width=VW(); canvas.height=VH(); _c.imageSmoothingEnabled=false; }
+  _c.clearRect(0,0,VW(),VH());
+  _c.fillStyle=C.desktop; _c.fillRect(0,0,VW(),VH());
+  drawGrid();
+  [...topLevel()].sort((a,b)=>a.z-b.z).forEach(n=>drawNode(n));
+  if(S.selectedId) drawSelection(findNode(S.selectedId));
+}
+
+// ══════════════════════════════════════════════════════════
+// VIEWPORT
+// ══════════════════════════════════════════════════════════
+const vpWrap=document.getElementById('viewport-wrap');
+const vpPan=document.getElementById('viewport-pan');
+const ZOOM_STEPS = [1, 2, 3, 4];   /* только целые для пиксельной чёткости */
+function clampZ(z){ return Math.max(ZOOM_STEPS[0],Math.min(ZOOM_STEPS[ZOOM_STEPS.length-1],z)); }
+function nextZoom(cur){ return ZOOM_STEPS.find(z=>z>cur+.001)||ZOOM_STEPS[ZOOM_STEPS.length-1]; }
+function prevZoom(cur){ return [...ZOOM_STEPS].reverse().find(z=>z<cur-.001)||ZOOM_STEPS[0]; }
+function applyView(){
+  vpPan.style.transform=`translate(${S.panX}px,${S.panY}px) scale(${S.zoom})`;
+  const pct=Math.round(S.zoom*100)+'%';
+  document.getElementById('vp-header').textContent=`Viewport — ${VW()}×${VH()}  |  ${pct}`;
+  document.getElementById('st-zoom').textContent='Zoom: '+pct;
+}
+function resetView(){ const r=vpWrap.getBoundingClientRect(); S.zoom=1; S.panX=~~((r.width-VW())/2); S.panY=~~((r.height-VH())/2); applyView(); }
+function zoom100(){ zoomAround(vpWrap.getBoundingClientRect().width/2,vpWrap.getBoundingClientRect().height/2,1); }
+function zoomIn(){  zoomAround(vpWrap.getBoundingClientRect().width/2,vpWrap.getBoundingClientRect().height/2,nextZoom(S.zoom)); }
+function zoomOut(){ zoomAround(vpWrap.getBoundingClientRect().width/2,vpWrap.getBoundingClientRect().height/2,prevZoom(S.zoom)); }
+function zoomAround(wx,wy,nz){ nz=clampZ(nz); if(Math.abs(nz-S.zoom)<.0001)return; const cx=(wx-S.panX)/S.zoom,cy=(wy-S.panY)/S.zoom; S.panX=wx-cx*nz; S.panY=wy-cy*nz; S.zoom=nz; applyView(); }
+function toCanvas(e){ const r=vpWrap.getBoundingClientRect(); return {x:(e.clientX-r.left-S.panX)/S.zoom,y:(e.clientY-r.top-S.panY)/S.zoom}; }
+vpWrap.addEventListener('wheel',e=>{ e.preventDefault(); const r=vpWrap.getBoundingClientRect(); const wx=e.clientX-r.left,wy=e.clientY-r.top; if(e.ctrlKey){zoomAround(wx,wy,e.deltaY<0?nextZoom(S.zoom):prevZoom(S.zoom));}else if(e.shiftKey){S.panX-=e.deltaY;applyView();}else{S.panX-=e.deltaX;S.panY-=e.deltaY;applyView();} },{passive:false});
+vpWrap.addEventListener('mousedown',e=>{ if(e.button===1){e.preventDefault();S.isPanning=true;S.panStartX=e.clientX;S.panStartY=e.clientY;S.panOriginX=S.panX;S.panOriginY=S.panY;vpWrap.style.cursor='grabbing';} });
+
+// ══════════════════════════════════════════════════════════
+// CANVAS MOUSE
+// ══════════════════════════════════════════════════════════
+canvas.addEventListener('contextmenu',e=>{ e.preventDefault(); if(S.modalOp){cancelModal();return;} const p=toCanvas(e); S.ctxX=p.x; S.ctxY=p.y; const hit=hitTest(p.x,p.y); if(hit){S.selectedId=hit.id;draw();buildInspector();buildHierarchy();} showCtx(e.clientX,e.clientY,hit); });
+canvas.addEventListener('mousedown',e=>{
+  if(e.button!==0)return; e.preventDefault();
+  if(S.modalOp){confirmModal();return;}
+  if(S.opType)return;
+  const {x:mx,y:my}=toCanvas(e); const sel=findNode(S.selectedId);
+  if(S.editMode==='select'){
+    const hnd=hitHandle(mx,my,sel);
+    if(hnd){snapshot();S.opType='drag-resize';S.opHandle=hnd;S.opStartCanvas={x:mx,y:my};S.opBaseRect={nx:sel.nx,ny:sel.ny,nw:sel.nw,nh:sel.nh};return;}
+    const hit=hitTest(mx,my);
+    if(hit){if(S.selectedId!==hit.id)snapshot();S.selectedId=hit.id;const ar=absRect(hit);S.opType='drag-move';S.opDragOff={x:mx-ar.x,y:my-ar.y};S.opBaseRect={nx:hit.nx,ny:hit.ny,nw:hit.nw,nh:hit.nh};}
+    else S.selectedId=null;
+    draw();buildInspector();buildHierarchy();
+    document.getElementById('st-sel').textContent=sel?`${sel.cls}: ${sel.name}`:'No selection';
+    return;
+  }
+  const hit=hitTest(mx,my);
+  if(hit&&S.selectedId!==hit.id){snapshot();S.selectedId=hit.id;draw();buildInspector();buildHierarchy();return;}
+  if(!S.selectedId)return;
+  const n=findNode(S.selectedId);
+  snapshot(); S.opStartCanvas={x:mx,y:my}; S.opBaseRect={nx:n.nx,ny:n.ny,nw:n.nw,nh:n.nh};
+  const mm={'move':'drag-move','resize-center':'drag-resize-center','resize-aspect':'drag-resize-aspect'};
+  S.opType=mm[S.editMode]||'drag-move';
+  if(S.editMode==='move'){const ar=absRect(n);S.opDragOff={x:mx-ar.x,y:my-ar.y};}
+});
+canvas.addEventListener('mousemove',e=>{
+  const {x:mx,y:my}=toCanvas(e);
+  document.getElementById('st-pos').textContent=`x:${(mx/VW()*100).toFixed(2)}%  y:${(my/VH()*100).toFixed(2)}%`;
+  if(S.modalOp){tickModal(e);draw();return;}
+  if(S.opType){
+    const n=findNode(S.selectedId); if(!n){S.opType=null;return;}
+    const o=S.opBaseRect, grid=effectiveGrid(e), minN=grid||S.BASE_GRID;
+    if(S.opType==='drag-move'){
+      let cox=0,coy=0; if(n.parentId){const co=clientOrigin(findNode(n.parentId));cox=co.x;coy=co.y;}
+      n.nx=sg((mx-S.opDragOff.x-cox)/VW(),grid); n.ny=sg((my-S.opDragOff.y-coy)/VH(),grid);
+    } else if(S.opType==='drag-resize'){
+      const dcx=mx-S.opStartCanvas.x, dcy=my-S.opStartCanvas.y;
+      const dnx=dcx/VW(), dny=dcy/VH(); const hid=S.opHandle.id;
+      let nx=o.nx,ny=o.ny,nw=o.nw,nh=o.nh;
+      if(hid.includes('l')){nx=sg(o.nx+dnx,grid);nw=sg(o.nw-dnx,grid);}
+      if(hid.includes('r')&&!hid.includes('l'))nw=sg(o.nw+dnx,grid);
+      if(hid.includes('t')&&!hid.includes('s')){ny=sg(o.ny+dny,grid);nh=sg(o.nh-dny,grid);}
+      if(hid.includes('b'))nh=sg(o.nh+dny,grid);
+      n.nx=nx;n.ny=ny;n.nw=Math.max(minN,nw);n.nh=Math.max(minN,nh);
+    } else if(S.opType==='drag-resize-center'){
+      const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
+      const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
+      const nnw=Math.max(minN,sg(o.nw+2*dnx,grid)),nnh=Math.max(minN,sg(o.nh+2*dny,grid));
+      n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
+    } else if(S.opType==='drag-resize-aspect'){
+      const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
+      const asp=o.nw/(o.nh||0.001), dom=Math.abs(dnx)>=Math.abs(dny)?dnx:dny*asp;
+      const nnw=Math.max(minN,sg(o.nw+dom,grid)),nnh=Math.max(minN,sg(nnw/asp,grid));
+      const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
+      n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
+    }
+    clampEvenSize(n);
+    draw();updateExport();buildInspector();return;
+  }
+  if(S.editMode==='select'){
+    const sel=findNode(S.selectedId);
+    const hnd=sel?hitHandle(mx,my,sel):null;
+    canvas.style.cursor=hnd?hnd.cur:(hitTest(mx,my)?'move':'crosshair');
+  }
+});
+canvas.addEventListener('mouseup',e=>{ if(e.button===0&&!S.modalOp)S.opType=null; });
+canvas.addEventListener('mouseleave',()=>{ if(!S.modalOp)S.opType=null; });
+document.addEventListener('mousemove',e=>{ _lastMouseScreen={x:e.clientX,y:e.clientY}; if(S.isPanning){S.panX=S.panOriginX+(e.clientX-S.panStartX);S.panY=S.panOriginY+(e.clientY-S.panStartY);applyView();} });
+document.addEventListener('mouseup',e=>{ if(e.button===1){S.isPanning=false;vpWrap.style.cursor='';} });
+
+// ══════════════════════════════════════════════════════════
+// CONTEXT MENU
+// ══════════════════════════════════════════════════════════
+const ctxMenu=document.getElementById('ctx-menu');
+function showCtx(cx,cy,hit){ const has=!!hit; document.getElementById('ctx-info').textContent=has?`${hit.cls}: ${hit.name}`:'(background)'; ['ctx-dup','ctx-del','ctx-front','ctx-back'].forEach(id=>document.getElementById(id).classList.toggle('disabled',!has)); ctxMenu.style.left=Math.min(cx,window.innerWidth-180)+'px'; ctxMenu.style.top=Math.min(cy,window.innerHeight-220)+'px'; ctxMenu.classList.add('show'); }
+function hideCtx(){ ctxMenu.classList.remove('show'); }
+document.addEventListener('click',e=>{ if(!ctxMenu.contains(e.target))hideCtx(); closeMenus(); });
+
+// ══════════════════════════════════════════════════════════
+// CANVAS SETTINGS
+// ══════════════════════════════════════════════════════════
+function showCanvasModal(){ closeMenus(); document.getElementById('cv-w').value=VW(); document.getElementById('cv-h').value=VH(); document.getElementById('canvas-modal').classList.add('show'); }
+function hideCanvasModal(){ document.getElementById('canvas-modal').classList.remove('show'); }
+function applyCanvasSize(){ const w=parseInt(document.getElementById('cv-w').value)||800; const h=parseInt(document.getElementById('cv-h').value)||600; if(w<320||h<200||w>3840||h>2160){alert('Size out of range.');return;} snapshot(); project.virtualW=w; project.virtualH=h; hideCanvasModal(); refresh(); resetView(); }
+
+// ══════════════════════════════════════════════════════════
+// HIERARCHY
+// ══════════════════════════════════════════════════════════
+const ICONS={WINDOW:'⊞',PANEL:'▣',BUTTON:'□',STATIC:'T',IMAGE:'▨',CHECKBOX:'☑',LISTBOX:'≡',GROUPBOX:'▢'};
+function buildHierarchy(){
+  const el=document.getElementById('hierarchy'); el.innerHTML='';
+  function rn(n,d){
+    const row=document.createElement('div');
+    row.className='tree-item'+(n.id===S.selectedId?' selected':'');
+    row.innerHTML=`<span style="display:inline-block;width:${d*12}px;flex-shrink:0"></span><span class="nicon">${ICONS[n.cls]||'?'}</span><span class="ntb">${n.cls}</span><span class="tname"> ${n.name}</span>`;
+    row.setAttribute('data-id', n.id);
+    row.draggable = true;
+    row.ondragstart = (e) => {
+      e.dataTransfer.setData('text/plain', n.id);
+      e.dataTransfer.effectAllowed = 'move';
+      // небольшая задержка, чтобы браузер не сразу скрывал элемент
+      setTimeout(() => { row.style.opacity = '0.4'; }, 0);
+    };
+    row.ondragend = (e) => {
+      row.style.opacity = '';
+      // убираем все подсветки
+      document.querySelectorAll('#hierarchy .drag-over').forEach(el => el.classList.remove('drag-over'));
+    };
+    row.onclick=()=>{ S.selectedId=n.id; draw(); buildInspector(); buildHierarchy(); document.getElementById('st-sel').textContent=`${n.cls}: ${n.name}`; };
+    el.appendChild(row); childrenOf(n.id).forEach(c=>rn(c,d+1));
+  }
+  topLevel().forEach(n=>rn(n,0));
+}
+
+// ══════════════════════════════════════════════════════════
+// INSPECTOR
+// ══════════════════════════════════════════════════════════
+function fmtP(v,d=2){ return (v*100).toFixed(d)+'%'; }
+function parseP(s){ s=String(s).trim(); return s.endsWith('%')?parseFloat(s)/100:parseFloat(s); }
+function buildInspector(){
+  const el=document.getElementById('inspector');
+  const n=findNode(S.selectedId);
+  if(!n){el.innerHTML='<div class="no-sel">— Nothing selected —<br><br><span style="font-size:10px">Click an element in the<br>Viewport or Hierarchy</span></div>';return;}
+  const H=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const r=(l,v)=>`<div class="pr"><span class="pl">${l}</span><div class="pv">${v}</div></div>`;
+  const iT=(k,v)=>`<input type="text" value="${H(String(v))}" oninput="pStr(${n.id},'${k}',this.value)">`;
+  const iP=(k,v)=>`<input type="text" value="${H(fmtP(v))}" oninput="pPct(${n.id},'${k}',this.value)">`;
+  const iN=(k,v)=>`<input type="number" value="${H(String(v))}" oninput="pNum(${n.id},'${k}',this.value)">`;
+  const ck=(k,v)=>`<input type="checkbox" ${v?'checked':''} onchange="pBool(${n.id},'${k}',this.checked)">`;
+  const sl=(k,v)=>{ const o=project.commands.map(c=>`<option value="${c}"${c===v?' selected':''}>${c}</option>`).join(''); return `<select onchange="pStr(${n.id},'${k}',this.value)"><option value=""></option>${o}</select>`; };
+  const ro=v=>`<span class="pro">${H(String(v))}</span>`;
+  const pBtn=(label,onclick)=>`<button class="btn" style="font-size:9px;padding:1px 4px" onclick="${onclick}">${label}</button>`;
+  let h='';
+  h+='<div class="pgh">Identity</div>';
+  h+=r('Name',iT('name',n.name)); h+=r('Class',ro(n.cls)); h+=r('Caption',iT('caption',n.caption)); h+=r('Style',iT('style',n.style));
+  h+='<div class="pgh">Position &amp; Size</div>';
+  h+=r('Left %',iP('nx',n.nx)); h+=r('Top %',iP('ny',n.ny));
+  h+=r('Width %',iP('nw',n.nw)); h+=r('Height %',iP('nh',n.nh));
+  h+=r('Right%',ro(fmtP(n.nx+n.nw))); h+=r('Bottom%',ro(fmtP(n.ny+n.nh)));
+  h+=r('px x,y',ro(`${~~(n.nx*VW())}, ${~~(n.ny*VH())}`));
+  h+=r('px w,h',ro(`${~~(n.nw*VW())} × ${~~(n.nh*VH())}`));
+  h+='<div class="pgh">Pivot  (0..1 inside element)</div>';
+  h+=r('x, y',`<input type="text" value="${n.pivot.join(', ')}" oninput="pPivot(${n.id},this.value)" title="0,0=TL  0.5,0.5=C  1,1=BR">`);
+  h+=r('Preset',pBtn('TL',`setPivotPreset(${n.id},0,0)`)+pBtn('C',`setPivotPreset(${n.id},0.5,0.5)`)+pBtn('BR',`setPivotPreset(${n.id},1,1)`)+pBtn('TC',`setPivotPreset(${n.id},0.5,0)`)+pBtn('BC',`setPivotPreset(${n.id},0.5,1)`));
+  h+='<div class="pgh">Anchor  (0..1 in parent)</div>';
+  h+=r('TL x,y',`<input type="text" value="${n.anchor[0].toFixed(3)}, ${n.anchor[1].toFixed(3)}" oninput="pAnchorTL(${n.id},this.value)">`);
+  h+=r('BR x,y',`<input type="text" value="${n.anchor[2].toFixed(3)}, ${n.anchor[3].toFixed(3)}" oninput="pAnchorBR(${n.id},this.value)">`);
+  h+=r('Preset',pBtn('TL',`setAnchorPreset(${n.id},'tl')`)+pBtn('C',`setAnchorPreset(${n.id},'c')`)+pBtn('↔',`setAnchorPreset(${n.id},'stretch-h')`)+pBtn('↕',`setAnchorPreset(${n.id},'stretch-v')`)+pBtn('Fill',`setAnchorPreset(${n.id},'fill')`));
+  h+='<div class="pgh">Z-order &amp; State</div>';
+  h+=r('Z-order',iN('z',n.z)); h+=r('Visible',ck('visible',n.visible)); h+=r('Enabled',ck('enabled',n.enabled));
+  if(n.cls==='WINDOW'){
+    h+='<div class="pgh">System Buttons</div>';
+    const sb=n.sysBtns||{};
+    h+=r('Close',`<input type="checkbox" ${sb.close?'checked':''} onchange="pSysBtn(${n.id},'close',this.checked)">`);
+    h+=r('Minimize',`<input type="checkbox" ${sb.minimize?'checked':''} onchange="pSysBtn(${n.id},'minimize',this.checked)">`);
+    h+=r('Maximize',`<input type="checkbox" ${sb.maximize?'checked':''} onchange="pSysBtn(${n.id},'maximize',this.checked)">`);
+  }
+  if(n.cls==='BUTTON'||n.cls==='CHECKBOX'){
+    h+='<div class="pgh">Events</div>';
+    h+=r('onClick',sl('onClick',n.onClick));
+    if(n.cls==='CHECKBOX')h+=r('onToggle',sl('onToggle',n.onToggle));
+  }
+  if(n.cls==='IMAGE'){h+='<div class="pgh">Image</div>';h+=r('Src',iT('src',n.src));}
+  if(n.cls==='LISTBOX'&&n.items){
+    h+='<div class="pgh">Items (one per line)</div>';
+    h+=`<div class="pr"><div class="pv" style="width:100%"><textarea rows="4" style="width:100%" oninput="pItems(${n.id},this.value)">${(n.items||[]).join('\n')}</textarea></div></div>`;
+  }
+  el.innerHTML=h;
+}
+function pStr(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
+function pBool(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
+function pNum(id,k,v){ const n=findNode(id); if(n){n[k]=parseFloat(v)||0;draw();updateExport();} }
+function pPct(id,k,v){
+  const n=findNode(id); if(!n)return;
+  const val=parseP(v); if(!isNaN(val)){
+    n[k]=val;
+    clampEvenSize(n);
+    draw();updateExport();buildInspector();
+  }
+}
+function pPivot(id,v){
+  const n=findNode(id); if(!n)return;
+  const p=v.split(',').map(s=>parseFloat(s.trim()));
+  if(p.length>=2 && !p.some(isNaN)){
+    n.pivot = [Math.max(0,Math.min(1,p[0])), Math.max(0,Math.min(1,p[1]))];
+    draw(); updateExport();
+  }
+}
+function pAnchorTL(id,v){
+  const n=findNode(id); if(!n)return;
+  const p=v.split(',').map(s=>parseFloat(s.trim()));
+  if(p.length>=2&&!p.some(isNaN)){
+    n.anchor[0]=Math.max(0,Math.min(1,p[0]));
+    n.anchor[1]=Math.max(0,Math.min(1,p[1]));
+    draw();updateExport();
+  }
+}
+function pAnchorBR(id,v){
+  const n=findNode(id); if(!n)return;
+  const p=v.split(',').map(s=>parseFloat(s.trim()));
+  if(p.length>=2&&!p.some(isNaN)){
+    n.anchor[2]=Math.max(0,Math.min(1,p[0]));
+    n.anchor[3]=Math.max(0,Math.min(1,p[1]));
+    draw();updateExport();
+  }
+}
+function setAnchorPreset(id,preset){
+  const n=findNode(id); if(!n)return;
+  const pr={'tl':[0,0,0,0],'c':[0.5,0.5,0.5,0.5],'stretch-h':[0,0,1,0],'stretch-v':[0,0,0,1],'fill':[0,0,1,1]};
+  if(pr[preset]){
+    n.anchor=pr[preset];
+    draw();updateExport();buildInspector();
+  }
+}
+function pSysBtn(id,k,v){ const n=findNode(id); if(!n)return; if(!n.sysBtns)n.sysBtns={close:true,minimize:false,maximize:false}; n.sysBtns[k]=v; draw();updateExport(); }
+function pItems(id,v){ const n=findNode(id); if(!n)return; n.items=v.split('\n').map(s=>s.trim()).filter(Boolean); draw();updateExport(); }
+
+// ══════════════════════════════════════════════════════════
+// EXPORTER
+// ══════════════════════════════════════════════════════════
+function stripQ(s){ s=String(s).trim(); return (s.startsWith('"')&&s.endsWith('"'))||(s.startsWith("'")&&s.endsWith("'"))?s.slice(1,-1):s; }
+function ev(v){ return stripQ(String(v)); }
+function ep(v){ return (v*100).toFixed(4)+'%'; }
+function exportNode(n){
+  const L=[]; L.push(n.name+':');
+  L.push(`    class        = ${n.cls}`);
+  if(n.caption) L.push(`    caption      = ${ev(n.caption)}`);
+  L.push(`    pos          = ${ep(n.nx)}, ${ep(n.ny)}`);
+  L.push(`    size         = ${ep(n.nw)}, ${ep(n.nh)}`);
+  L.push(`    ; @${VW()}x${VH()}  px=${~~(n.nx*VW())},${~~(n.ny*VH())}  sz=${~~(n.nw*VW())}x${~~(n.nh*VH())}`);
+  L.push(`    pivot        = ${n.pivot[0]}, ${n.pivot[1]}`);
+  L.push(`    anchor_tl    = ${n.anchor[0]}, ${n.anchor[1]}`);
+  L.push(`    anchor_br    = ${n.anchor[2]}, ${n.anchor[3]}`);
+  const sf=[]; if(!n.visible)sf.push('WS_INVISIBLE'); if(!n.enabled)sf.push('WS_DISABLED');
+  if(n.z) L.push(`    z_order      = ${n.z}`);
+  if(sf.length) L.push(`    dwStyle      = ${sf.join(' | ')}`);
+  if(n.style)   L.push(`    style_class  = ${ev(n.style)}`);
+  if(n.cls==='WINDOW'&&n.sysBtns){ const sb=n.sysBtns,wf=[]; if(sb.close)wf.push('WS_SYSMENU'); if(sb.minimize)wf.push('WS_MINIMIZEBOX'); if(sb.maximize)wf.push('WS_MAXIMIZEBOX'); L.push(`    ws_flags     = ${wf.length?wf.join(' | '):'0'}`); }
+  if(n.onClick)  L.push(`    on_click     = ${ev(n.onClick)}`);
+  if(n.onToggle) L.push(`    on_toggle    = ${ev(n.onToggle)}`);
+  if(n.cls==='IMAGE'&&n.src) L.push(`    lpszSrc      = ${ev(n.src)}`);
+  if(n.cls==='LISTBOX'&&n.items) L.push(`    items        = [ ${n.items.map(i=>ev(i)).join(', ')} ]`);
+  if(n.parentId){ const p=findNode(n.parentId); if(p)L.push(`    parent       = ${p.name}`); }
+  return L.join('\n');
+}
+function buildExport(){
+  const L=['; UI Layout File — UI95 Editor v0.8 / PPTK','; Coords: % of virtual canvas (resolution-independent)','; pivot: 0,0=TL  0.5,0.5=C  1,1=BR','; anchor_tl/br: fractions of parent client area',';',`@ui_file      = ${project.name}`,`@namespace    = ${project.namespace}`,`@theme        = ${project.theme}`,`@virtual_size = ${VW()} x ${VH()}`,''];
+  project.nodes.forEach(n=>{L.push(exportNode(n));L.push('');});
+  return L.join('\n');
+}
+function updateExport(){ document.getElementById('export-area').textContent=buildExport(); }
+function copyExport(){ navigator.clipboard.writeText(buildExport()).then(()=>{ const s=document.getElementById('export-status'); s.textContent='✓ Copied!'; setTimeout(()=>s.textContent='',2200); }); }
+
+// ══════════════════════════════════════════════════════════
+// PARSER
+// ══════════════════════════════════════════════════════════
+function parseUi(text){
+  const log=[]; const lines=text.split('\n');
+  let meta={virtualW:800,virtualH:600,name:'imported',namespace:'game.ui',theme:'win98_classic'};
+  const rawNodes=[]; let cur=null;
+  for(let raw of lines){
+    let line=raw; const ci=line.indexOf('//'); if(ci>=0)line=line.substring(0,ci);
+    if(line.trimStart().startsWith(';'))continue;
+    line=line.trimEnd(); if(!line.trim())continue;
+    if(line.trimStart().startsWith('@')){ const m=line.match(/@(\w+)\s*[=:]\s*(.*)/); if(m){ const k=m[1].toLowerCase(),v=stripQ(m[2]); if(k==='ui_file'||k==='name')meta.name=v; else if(k==='namespace')meta.namespace=v; else if(k==='theme')meta.theme=v; else if(k==='virtual_size'){const sz=v.match(/(\d+)\s*[x×,\s]+(\d+)/i);if(sz){meta.virtualW=+sz[1];meta.virtualH=+sz[2];}} } continue; }
+    if(!line.match(/^\s/)&&line.trimEnd().endsWith(':')){ const name=line.trim().slice(0,-1).trim(); if(name){cur={name,props:{}};rawNodes.push(cur);} continue; }
+    if(cur){ const m=line.match(/^\s+(\w[\w_]*)\s*[=:]\s*(.*)/); if(m)cur.props[m[1].toLowerCase()]=m[2].trim(); }
+  }
+  const VW2=meta.virtualW,VH2=meta.virtualH;
+  function toN(s,isY=false){ s=stripQ(s).trim(); if(s.endsWith('%'))return parseFloat(s)/100; const v=parseFloat(s); if(isNaN(v))return 0; return Math.abs(v)>1?(isY?v/VH2:v/VW2):v; }
+  function parsePair(s){ const pts=s.split(/[\s,x×]+/).filter(Boolean); return[toN(pts[0]||'0',false),toN(pts[1]||'0',true)]; }
+  function parseBool(s){ return s==='true'||s==='1'||s==='yes'; }
+  function parseItems(s){ const m=s.match(/\[([^\]]*)\]/); return(m?m[1]:s).split(',').map(x=>stripQ(x)).filter(Boolean); }
+  function parseWsF(s){ return{close:s.includes('WS_SYSMENU')||s.includes('WS_CLOSE'),minimize:s.includes('WS_MINIMIZEBOX'),maximize:s.includes('WS_MAXIMIZEBOX')}; }
+  const nameToId={}; let nextId=project.nextId;
+  const nodes=rawNodes.map(raw=>{
+    const p=raw.props,id=nextId++; nameToId[raw.name]=id;
+    const cls=(p.class||p.type||'BUTTON').toUpperCase();
+    let nx=0,ny=0,nw=px2nx(88),nh=py2ny(23);
+    if(p.pos||p.position)[nx,ny]=parsePair(p.pos||p.position);
+    if(p.size||p.dimensions)[nw,nh]=parsePair(p.size||p.dimensions);
+    if(p.rect||p.ltrb){ const pts=(p.rect||p.ltrb).split(/[\s,]+/).filter(Boolean); if(pts.length>=4){const l=toN(pts[0],false),t=toN(pts[1],true),r2=toN(pts[2],false),b=toN(pts[3],true);nx=l;ny=t;nw=r2-l;nh=b-t;} }
+    let pivot=[0.5,0.5]; if(p.pivot){ const pp=p.pivot.split(',').map(s=>parseFloat(s.trim())); if(pp.length>=2&&!pp.some(isNaN))pivot=[Math.max(0,Math.min(1,pp[0])),Math.max(0,Math.min(1,pp[1]))]; }
+    let anchor=[0,0,0,0];
+    if(p.anchor_tl||p.anchor_br){ const tl=p.anchor_tl?p.anchor_tl.split(',').map(s=>parseFloat(s.trim())):[0,0]; const br=p.anchor_br?p.anchor_br.split(',').map(s=>parseFloat(s.trim())):[0,0]; anchor=[tl[0]||0,tl[1]||0,br[0]||0,br[1]||0]; }
+    else if(p.anchor){ const ap=p.anchor.split(',').map(parseFloat); if(ap.length>=4&&!ap.some(isNaN))anchor=ap.slice(0,4); }
+    const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), _parentName:p.parent||null };
+    if(cls==='WINDOW')n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
+    if(cls==='LISTBOX')n.items=p.items?parseItems(p.items):['Item 1','Item 2'];
+    clampEvenSize(n);
+    return n;
+  });
+  nodes.forEach(n=>{ if(n._parentName&&nameToId[n._parentName]!=null)n.parentId=nameToId[n._parentName]; delete n._parentName; });
+  if(!nodes.length)log.push('⚠ No nodes found.'); else log.push(`✓ Parsed ${nodes.length} node(s) from "${meta.name}".`);
+  return{meta,nodes,nextId,log};
+}
+function showImportModal(){ closeMenus(); document.getElementById('import-modal').classList.add('show'); document.getElementById('import-log').textContent=''; }
+function hideImportModal(){ document.getElementById('import-modal').classList.remove('show'); }
+function doImport(){ const text=document.getElementById('import-ta').value; if(!text.trim()){document.getElementById('import-log').textContent='⚠ Nothing to import.';return;} const result=parseUi(text); document.getElementById('import-log').textContent=result.log.join('\n'); if(!result.nodes.length)return; snapshot(); Object.assign(project,{name:result.meta.name,namespace:result.meta.namespace,theme:result.meta.theme,virtualW:result.meta.virtualW,virtualH:result.meta.virtualH,nodes:result.nodes,nextId:result.nextId||project.nextId}); S.selectedId=null; hideImportModal(); refresh(); }
+document.getElementById('ui-input').onchange=function(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{document.getElementById('import-ta').value=ev.target.result;document.getElementById('import-modal').classList.add('show');}; r.readAsText(f); e.target.value=''; };
+function loadUiFile(e){ document.getElementById('ui-input').onchange(e); }
+
+// ══════════════════════════════════════════════════════════
+// FILE I/O
+// ══════════════════════════════════════════════════════════
+function cmdNew(){ if(!confirm('New project? Unsaved changes will be lost.'))return; snapshot(); project={name:'new_ui',namespace:'game.ui',theme:'win98_classic',virtualW:800,virtualH:600,nodes:[],nextId:1,commands:['ui.close','game.start','game.quit']}; S.selectedId=null; refresh(); }
+function cmdSave(){ const b=new Blob([JSON.stringify(project,null,2)],{type:'application/json'}); const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=project.name+'.json';a.click(); }
+function cmdLoad(){ document.getElementById('file-input').click(); }
+function loadFile(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{try{project=JSON.parse(ev.target.result);S.selectedId=null;refresh();}catch{alert('Invalid project file.');}}; r.readAsText(f); e.target.value=''; }
+function cmdExportFile(){ const b=new Blob([buildExport()],{type:'text/plain'}); const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=project.name+'.ui';a.click(); }
+
+function showHelp(){
+  alert(
+    'UI95 Editor v0.8 — PPTK\n\n'+
+    'MODES\n'+
+    '  Q / Esc  — Select\n'+
+    '  G        — Move (toggle; press again to start modal op)\n'+
+    '  S        — Resize center\n'+
+    '  A        — Resize aspect\n\n'+
+    'MODAL OPS  (G/S/A active + selection)\n'+
+    '  Move mouse  — real-time edit\n'+
+    '  LMB/Enter   — confirm\n'+
+    '  RMB/Esc     — cancel (undo)\n'+
+    '  Alt         — coarse 1% grid\n\n'+
+    'SNAP GRID\n'+
+    '  default     — 0.25%\n'+
+    '  Shift       — 0.125%\n'+
+    '  Ctrl        — 0.025%\n'+
+    '  Ctrl+Shift  — 0.0125%\n'+
+    '  Alt         — 1% (whole percent)\n\n'+
+    'VIEWPORT\n'+
+    '  Scroll         — pan\n'+
+    '  Shift+Scroll   — pan H\n'+
+    '  Ctrl+Scroll    — zoom\n'+
+    '  MMB drag       — pan\n'+
+    '  Home           — reset\n'+
+    '  Ctrl+0         — 100%\n\n'+
+    'GIZMOS\n'+
+    '  Orange ⊕  — pivot (0,0=TL  0.5,0.5=C)\n'+
+    '  Cyan ◇ TL/BR — anchor points in parent'
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// SPLITTERS
+// ══════════════════════════════════════════════════════════
+function makeSplitter(el,horiz,panA,panB,prop){ let drag=false,start=0,sa=0,sb=0; el.addEventListener('mousedown',e=>{drag=true;start=horiz?e.clientX:e.clientY;sa=panA.getBoundingClientRect()[horiz?'width':'height'];sb=panB.getBoundingClientRect()[horiz?'width':'height'];e.preventDefault();}); document.addEventListener('mousemove',e=>{if(!drag)return;const d=(horiz?e.clientX:e.clientY)-start;panA.style[prop]=Math.max(60,sa+d)+'px';panB.style[prop]=Math.max(60,sb-d)+'px';}); document.addEventListener('mouseup',()=>drag=false); }
+makeSplitter(document.getElementById('spl-left'),  true,  document.getElementById('left-panel'),   document.getElementById('center-panel'),'width');
+makeSplitter(document.getElementById('spl-right'), true,  document.getElementById('center-panel'), document.getElementById('right-panel'),  'width');
+makeSplitter(document.getElementById('spl-bottom'),false, document.getElementById('viewport-wrap'),document.getElementById('bottom-panel'), 'height');
+
+// ── Drag & Drop в дереве иерархии ────────────────────────
+(function initHierarchyDnD() {
+  const hierarchy = document.getElementById('hierarchy');
+
+  hierarchy.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    // убираем предыдущую подсветку
+    document.querySelectorAll('#hierarchy .drag-over').forEach(el => el.classList.remove('drag-over'));
+    // ищем ближайший tree-item под курсором
+    const target = e.target.closest('.tree-item');
+    if (target) {
+      target.classList.add('drag-over');
+    }
+  });
+
+  hierarchy.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const srcId = parseInt(e.dataTransfer.getData('text/plain'));
+    if (!srcId) return;
+    const srcNode = findNode(srcId);
+    if (!srcNode) return;
+
+    // определяем целевой элемент
+    const target = e.target.closest('.tree-item');
+    let targetId = null;
+    if (target) {
+      targetId = parseInt(target.getAttribute('data-id'));
+    }
+
+    // нельзя бросать на самого себя или на своего потомка
+    if (targetId === srcId) return;
+    if (targetId && isDescendant(targetId, srcId)) return;
+
+    snapshot();
+
+    if (targetId) {
+      // делаем srcNode дочерним для targetId
+      srcNode.parentId = targetId;
+      // помещаем в конец списка детей
+      const siblings = childrenOf(targetId);
+      const maxZ = siblings.length ? Math.max(...siblings.map(s => s.z)) : 0;
+      srcNode.z = maxZ + 1;
+    } else {
+      // бросаем в пустую область – делаем top-level
+      srcNode.parentId = null;
+      const tops = topLevel();
+      const maxZ = tops.length ? Math.max(...tops.map(s => s.z)) : 0;
+      srcNode.z = maxZ + 1;
+    }
+
+    refresh();
+    // сбросим все подсветки
+    document.querySelectorAll('#hierarchy .drag-over').forEach(el => el.classList.remove('drag-over'));
+  });
+
+  // вспомогательная функция: проверяет, является ли узел descendantId потомком узла ancestorId
+  function isDescendant(ancestorId, descendantId) {
+    let current = findNode(descendantId);
+    while (current && current.parentId !== null) {
+      if (current.parentId === ancestorId) return true;
+      current = findNode(current.parentId);
+    }
+    return false;
+  }
+})();
+
+// ══════════════════════════════════════════════════════════
+// MENUS
+// ══════════════════════════════════════════════════════════
+document.querySelectorAll('.menu-btn').forEach(btn=>{ btn.addEventListener('click',e=>{ e.stopPropagation(); const dd=document.getElementById('dd-'+btn.id.replace('m-','')); const wasOpen=dd.classList.contains('show'); closeMenus(); if(!wasOpen){dd.style.left=btn.offsetLeft+'px';dd.classList.add('show');btn.classList.add('open');} }); });
+function closeMenus(){ document.querySelectorAll('.dropdown').forEach(d=>d.classList.remove('show')); document.querySelectorAll('.menu-btn').forEach(b=>b.classList.remove('open')); }
+
+// ══════════════════════════════════════════════════════════
+// KEYBOARD
+// ══════════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  const tag=e.target.tagName; if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  if(e.repeat)return;
+  if(e.ctrlKey){
+    if(e.key==='z'){e.preventDefault();undo();}
+    else if(e.key==='y'){e.preventDefault();redo();}
+    else if(e.key==='d'){e.preventDefault();duplicateSelected();}
+    else if(e.key==='s'){e.preventDefault();cmdSave();}
+    else if(e.key==='o'){e.preventDefault();cmdLoad();}
+    else if(e.key==='n'){e.preventDefault();cmdNew();}
+    else if(e.key==='+'||e.key==='='){e.preventDefault();zoomIn();}
+    else if(e.key==='-'){e.preventDefault();zoomOut();}
+    else if(e.key==='0'){e.preventDefault();zoom100();}
+    return;
+  }
+  if(S.modalOp){
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();confirmModal();return;}
+    if(e.key==='Escape'){e.preventDefault();cancelModal();return;}
+    return;
+  }
+  if(e.key==='g'||e.key==='G'){ e.preventDefault(); if(S.editMode==='move'&&S.selectedId)startModal('move',e); else{setMode(S.editMode==='move'?'select':'move');} return; }
+  if(e.key==='s'||e.key==='S'){ e.preventDefault(); if(S.editMode==='resize-center'&&S.selectedId)startModal('resize-center',e); else setMode(S.editMode==='resize-center'?'select':'resize-center'); return; }
+  if(e.key==='a'||e.key==='A'){ e.preventDefault(); if(S.editMode==='resize-aspect'&&S.selectedId)startModal('resize-aspect',e); else setMode(S.editMode==='resize-aspect'?'select':'resize-aspect'); return; }
+  const step=e.shiftKey?S.COARSE_GRID:S.BASE_GRID;
+  if(e.key==='Delete')deleteSelected();
+  else if(e.key==='Escape'||e.key==='q'||e.key==='Q'){setMode('select');S.selectedId=null;draw();buildInspector();buildHierarchy();}
+  else if(e.key==='Home')resetView();
+    else if(e.key==='ArrowLeft'  && S.selectedId){
+    snapshot(); const n=findNode(S.selectedId);
+    n.nx = sg(n.nx - step, step);
+    draw(); updateExport(); buildInspector();
+}
+else if(e.key==='ArrowRight' && S.selectedId){
+    snapshot(); const n=findNode(S.selectedId);
+    n.nx = sg(n.nx + step, step);
+    draw(); updateExport(); buildInspector();
+}
+else if(e.key==='ArrowUp'    && S.selectedId){
+    snapshot(); const n=findNode(S.selectedId);
+    n.ny = sg(n.ny - step, step);
+    draw(); updateExport(); buildInspector();
+}
+else if(e.key==='ArrowDown'  && S.selectedId){
+    snapshot(); const n=findNode(S.selectedId);
+    n.ny = sg(n.ny + step, step);
+    draw(); updateExport(); buildInspector();
+}
+});
+document.addEventListener('keydown',e=>{ if(S.modalOp&&e.key==='Alt'){S.modalAlt=true;e.preventDefault();} });
+document.addEventListener('keyup',e=>{ if(S.modalOp&&e.key==='Alt')S.modalAlt=false; });
+
+// ══════════════════════════════════════════════════════════
+// DEMO SCENE
+// ══════════════════════════════════════════════════════════
+function loadDemo(){
+  const a=n=>{project.nodes.push(n);return n;};
+  const N=(px,py,pw,ph)=>({nx:px/800,ny:py/600,nw:pw/800,nh:ph/600});
+  const base={visible:true,enabled:true,z:0,style:'',onClick:'',onToggle:'',src:''};
+  const w1=project.nextId++;
+  a({id:w1,cls:'WINDOW',parentId:null,name:'wnd_squad',caption:'Squad',...N(20,30,240,240),...base,anchor:[0,0,0,0],pivot:[0,0],sysBtns:{close:true,minimize:true,maximize:false}});
+  a({id:project.nextId++,cls:'LISTBOX',parentId:w1,name:'lst_squad',caption:'',...N(6,6,210,88),...base,anchor:[0,0,1,0],pivot:[0,0],items:['⚔ Knight — Lv.5','🏹 Archer — Lv.3','🔮 Mage — Lv.4','🗡 Rogue — Lv.2']});
+  a({id:project.nextId++,cls:'BUTTON',parentId:w1,name:'btn_deploy',caption:'Deploy',...N(6,100,100,23),...base,anchor:[0,0,0,0],pivot:[0,0],onClick:'game.deploy'});
+  a({id:project.nextId++,cls:'BUTTON',parentId:w1,name:'btn_dismiss',caption:'Dismiss',...N(112,100,98,23),...base,anchor:[0,0,0,0],pivot:[0,0],onClick:'game.dismiss'});
+  a({id:project.nextId++,cls:'GROUPBOX',parentId:w1,name:'grp_party',caption:'Party Status',...N(6,132,210,76),...base,anchor:[0,0,1,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'CHECKBOX',parentId:w1,name:'chk_autoheal',caption:'Auto-Heal',...N(12,148,130,15),...base,anchor:[0,0,0,0],pivot:[0,0],onToggle:'game.toggle_autoheal'});
+  a({id:project.nextId++,cls:'STATIC',parentId:w1,name:'lbl_morale',caption:'Morale: High',...N(12,166,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'STATIC',parentId:w1,name:'lbl_ver',caption:'v0.8-PPTK',...N(6,196,80,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
+  const w2=project.nextId++;
+  a({id:w2,cls:'WINDOW',parentId:null,name:'wnd_detail',caption:'Unit Details',...N(278,30,252,248),...base,anchor:[0,0,0,0],pivot:[0.5,0],sysBtns:{close:true,minimize:false,maximize:true}});
+  a({id:project.nextId++,cls:'IMAGE',parentId:w2,name:'img_portrait',caption:'',...N(6,6,68,90),...base,anchor:[0,0,0,0],pivot:[0.5,1],src:'portrait.png'});
+  a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_name',caption:'Sir Aldric',...N(80,6,156,16),...base,anchor:[0,0,1,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_class',caption:'Knight — Level 5',...N(80,24,156,14),...base,anchor:[0,0,1,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'BUTTON',parentId:w2,name:'btn_inspect',caption:'Inspect',...N(80,44,72,22),...base,anchor:[0,0,0,0],pivot:[0.5,0.5],onClick:'ui.open_report'});
+  a({id:project.nextId++,cls:'BUTTON',parentId:w2,name:'btn_equip',caption:'Equip…',...N(158,44,72,22),...base,anchor:[0,0,0,0],pivot:[0.5,0.5],onClick:'game.open_equip'});
+  a({id:project.nextId++,cls:'GROUPBOX',parentId:w2,name:'grp_stats',caption:'Statistics',...N(6,102,228,108),...base,anchor:[0,0,1,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_hp', caption:'HP:   80 / 100',...N(14,118,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_atk',caption:'ATK:  24',...N(14,136,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_def',caption:'DEF:  12',...N(14,154,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_spd',caption:'SPD:  9',...N(14,172,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
+  const w3=project.nextId++;
+  a({id:w3,cls:'WINDOW',parentId:null,name:'wnd_minimap',caption:'Minimap',...N(548,352,180,150),...base,anchor:[1,1,1,1],pivot:[1,1],sysBtns:{close:true,minimize:false,maximize:false}});
+  a({id:project.nextId++,cls:'IMAGE',parentId:w3,name:'img_map',caption:'',...N(4,4,156,100),...base,anchor:[0,0,1,1],pivot:[0.5,0.5],src:'minimap.png'});
+  a({id:project.nextId++,cls:'CHECKBOX',parentId:w3,name:'chk_fog',caption:'Fog of war',...N(4,108,140,14),...base,anchor:[0,0,0,0],pivot:[0,0],onToggle:'game.toggle_fog'});
+  const p1=project.nextId++;
+  a({id:p1,cls:'PANEL',parentId:null,name:'pnl_hud',caption:'',...N(0,558,800,42),...base,anchor:[0,1,1,1],pivot:[0,1]});
+  a({id:project.nextId++,cls:'STATIC',parentId:p1,name:'lbl_gold',caption:'Gold: 1240',...N(8,12,100,16),...base,anchor:[0,0,0,0],pivot:[0,0]});
+  a({id:project.nextId++,cls:'STATIC',parentId:p1,name:'lbl_day',caption:'Day 14 — Autumn',...N(300,12,200,16),...base,anchor:[0.5,0,0.5,0],pivot:[0.5,0]});
+  a({id:project.nextId++,cls:'BUTTON',parentId:p1,name:'btn_menu',caption:'Menu',...N(692,10,100,22),...base,anchor:[1,0,1,0],pivot:[1,0],onClick:'ui.open_menu'});
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+function refresh(){ draw(); buildHierarchy(); buildInspector(); updateExport(); }
+loadDemo();
+setMode('select');
+requestAnimationFrame(()=>requestAnimationFrame(resetView));
+refresh();
+</script>
+</body>
+</html>
