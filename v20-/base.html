@@ -923,9 +923,9 @@ function parentClientRect(n){
   const pr=absRect(p);
   return {x:pr.x+(p.cls==='WINDOW'?WIN_BX:0), y:pr.y+(p.cls==='WINDOW'?WIN_BY:0), w:p.nw*VW()-(p.cls==='WINDOW'?WIN_BX*2:0), h:p.nh*VH()-(p.cls==='WINDOW'?WIN_BY+WIN_BX:0)};
 }
-const HR=4;
+const HR=6;
 function getHandles(ax,ay,w,h){ return [{id:'tl',cx:ax,cy:ay,cur:'nw-resize'},{id:'tm',cx:ax+w/2,cy:ay,cur:'n-resize'},{id:'tr',cx:ax+w,cy:ay,cur:'ne-resize'},{id:'ml',cx:ax,cy:ay+h/2,cur:'w-resize'},{id:'mr',cx:ax+w,cy:ay+h/2,cur:'e-resize'},{id:'bl',cx:ax,cy:ay+h,cur:'sw-resize'},{id:'bm',cx:ax+w/2,cy:ay+h,cur:'s-resize'},{id:'br',cx:ax+w,cy:ay+h,cur:'se-resize'}]; }
-function hitHandle(mx,my,n){ if(!n)return null; const r=absRect(n); for(const h of getHandles(r.x,r.y,r.w,r.h)) if(Math.abs(mx-h.cx)<=HR+2&&Math.abs(my-h.cy)<=HR+2)return h; return null; }
+function hitHandle(mx,my,n){ if(!n)return null; const r=absRect(n); for(const h of getHandles(r.x,r.y,r.w,r.h)) if(Math.abs(mx-h.cx)<=HR+5&&Math.abs(my-h.cy)<=HR+5)return h; return null; }
 function hitTest(mx,my){ const sorted=[...project.nodes].sort((a,b)=>b.z-a.z||(project.nodes.indexOf(b)-project.nodes.indexOf(a))); for(const n of sorted){ if(!n.visible)continue; const {x,y,w,h}=absRect(n); if(mx>=x&&mx<=x+w&&my>=y&&my<=y+h)return n; } return null; }
 
 // ══════════════════════════════════════════════════════════
@@ -1129,8 +1129,9 @@ function drawSelection(n){
   // handles (only in select mode)
   if(S.editMode==='select'&&!S.modalOp){
     getHandles(x,y,w,h).forEach(hnd=>{
-      _c.fillStyle='#000080'; _c.fillRect(~~(hnd.cx-HR),~~(hnd.cy-HR),HR*2,HR*2);
+      _c.fillStyle='#0A246A'; _c.fillRect(~~(hnd.cx-HR),~~(hnd.cy-HR),HR*2,HR*2);
       _c.strokeStyle='#FFFFFF'; _c.lineWidth=1; _c.strokeRect(~~(hnd.cx-HR),~~(hnd.cy-HR),HR*2,HR*2);
+      _c.strokeStyle='#000000'; _c.strokeRect(~~(hnd.cx-HR)+1,~~(hnd.cy-HR)+1,HR*2-2,HR*2-2);
     });
   }
 
@@ -1246,8 +1247,11 @@ canvas.addEventListener('mousedown',e=>{
     else if(S.editMode==='resize-center') S.opType='drag-resize-center';
     else S.opType=null;
   }else{
-    S.selectedId=null;
-    S.opType=null;
+    const sel=findNode(S.selectedId);
+    if(sel){ const r=absRect(sel); const pad=8;
+      if(mx>=r.x-pad&&mx<=r.x+r.w+pad&&my>=r.y-pad&&my<=r.y+r.h+pad){ S.opType=null; }
+      else { S.selectedId=null; S.opType=null; }
+    }else{ S.selectedId=null; S.opType=null; }
   }
 
   draw(); buildInspector(); buildHierarchy();
@@ -1562,7 +1566,7 @@ function showTextModal(title,text){
   document.getElementById('import-modal').classList.add('show');
 }
 function showAbout(){
-  showTextModal('About','UI95 Editor v0.8\nWin95/98/ME inspired layout editor and preview tool.');
+  showTextModal('About','by stom - 2026\nWin95/98/2000/ME inspired layout editor and preview tool.');
 }
 function showControls(){
   showTextModal('Controls',
