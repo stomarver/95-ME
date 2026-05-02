@@ -801,6 +801,17 @@ function sg(v,step){ return step?Math.round(v/step)*step:v; }
 function snapN(v){ return sg(v,S.snapGrid?S.BASE_GRID:0); }
 // Приводит nw и nh к чётному пиксельному значению.
 // Не меняет положение (nx, ny).
+
+function stabilizeNodeRect(n){
+  if(!n) return;
+  const minW = (n.cls==='BUTTON'?SYS_METRICS.buttonMinW:SYS_METRICS.windowMinW) / VW();
+  const minH = (n.cls==='BUTTON'?SYS_METRICS.buttonMinH:SYS_METRICS.windowMinH) / VH();
+  n.nw = Math.max(minW, n.nw);
+  n.nh = Math.max(minH, n.nh);
+  n.nx = Math.max(-1, Math.min(2, n.nx));
+  n.ny = Math.max(-1, Math.min(2, n.ny));
+}
+
 function clampEvenSize(n) {
   if (!n) return;
   const rawW = Math.round(n.nw * VW());
@@ -892,6 +903,7 @@ function tickModal(e){
     hint.textContent=`Resize (${aspect.toFixed(2)})  w:${(nnw*100).toFixed(2)}%`;
   }
   // Автокоррекция размера для чётности при центрировании
+  stabilizeNodeRect(n);
   clampEvenSize(n);
   updateStatusMode(); draw(); buildInspector();
 }
@@ -910,7 +922,22 @@ function toggleGrid(){ S.snapGrid=!S.snapGrid; document.getElementById('btn-grid
 // ══════════════════════════════════════════════════════════
 // GEOMETRY
 // ══════════════════════════════════════════════════════════
-const TB_H=20, WIN_BX=2, WIN_BY=22;
+const SYS_METRICS = {
+  captionHeight: 20,
+  windowBorderX: 2,
+  windowClientOffsetY: 22,
+  sysButtonW: 15,
+  sysButtonH: 14,
+  sysButtonGap: 16,
+  windowMinW: 64,
+  windowMinH: 48,
+  buttonMinW: 40,
+  buttonMinH: 16
+};
+const SYS_PALETTE = {
+  face:'#C0C0C0', light:'#FFFFFF', shadow:'#808080', dark:'#404040', caption:'#000080', captionText:'#FFFFFF'
+};
+const TB_H=SYS_METRICS.captionHeight, WIN_BX=SYS_METRICS.windowBorderX, WIN_BY=SYS_METRICS.windowClientOffsetY;
 function absRect(n){
   let x=n.nx*VW(), y=n.ny*VH();
   if(n.parentId){ const p=findNode(n.parentId); if(p){ const pr=absRect(p); x+=pr.x+(p.cls==='WINDOW'?WIN_BX:0); y+=pr.y+(p.cls==='WINDOW'?WIN_BY:0); } }
@@ -959,9 +986,9 @@ function drawWindow(n,ox,oy){
 
   // System buttons — right-aligned in titlebar
   const sb=n.sysBtns||{}; let bx=x+w-4;
-  if(sb.close)   { bx-=16; pp_sysbtn(bx,y+3,15,14,'close');    }
-  if(sb.maximize){ bx-=16; pp_sysbtn(bx,y+3,15,14,'maximize'); }
-  if(sb.minimize){ bx-=16; pp_sysbtn(bx,y+3,15,14,'minimize'); }
+  if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
+  if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
+  if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
 
   // Client area — sunken inside frame
   const cy2=y+2+TB_H;
@@ -1289,6 +1316,7 @@ canvas.addEventListener('mousemove',e=>{
     n.ny=sg(o.ny-dny,modStep(e,true));
   }
 
+  stabilizeNodeRect(n);
   clampEvenSize(n);
   draw(); updateExport(); buildInspector();
 });
