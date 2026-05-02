@@ -1380,7 +1380,7 @@ function p9Vec(name){ const f=P9.find(a=>a[0]===name); return f?[f[1],f[2]]:[0.5
 function p9Token(x,y){ const f=P9.find(a=>Math.abs(a[1]-x)<0.001&&Math.abs(a[2]-y)<0.001); return f?f[0]:'center'; }
 
 function p9GridHtml(id,fn,current){
-  const cell=(name)=>`<button class="btn" style="padding:0;width:18px;height:18px;min-width:18px;${current===name?'background:#000080;color:#fff':''}" onclick="${fn}(${id},'${name}')">·</button>`;
+  const cell=(name)=>`<button class="btn" style="padding:0;width:18px;height:18px;min-width:18px;${current===name?'background:#000080;color:#fff':''}" onclick="${fn}(${id},'${name}')"></button>`;
   const rows=[['top_left','top_center','top_right'],['center_left','center','center_right'],['bottom_left','bottom_center','bottom_right']];
   return `<div style="display:grid;grid-template-columns:repeat(3,18px);gap:2px;">${rows.flat().map(cell).join('')}</div>`;
 }
@@ -1412,16 +1412,14 @@ function buildInspector(){
   h+=r('<span style="color:#0A8A2A">Height %</span>',`<input type="text" value="${fmtP(n.nh)}" onchange="pPct(${n.id},'nh',this.value)">`);
   h+=r('<span style="color:#005BFF">Width px</span>',`<input type="text" value="${~~(n.nw*VW())}" onchange="pCenterPx(${n.id},'w',this.value)">`);
   h+=r('<span style="color:#0A8A2A">Height px</span>',`<input type="text" value="${~~(n.nh*VH())}" onchange="pCenterPx(${n.id},'h',this.value)">`);
-  h+='<div class="pgh">Pivot (%)</div>';
-  h+=r('Point',p9GridHtml(n.id,'setPivotPoint',p9Name(n.pivot[0],n.pivot[1])));
-  h+=r('x%, y%',ro(`${(n.pivot[0]*100).toFixed(0)}%, ${(n.pivot[1]*100).toFixed(0)}%`));
-  h+='<div class="pgh">Anchor (%)</div>';
-  h+=r('Point',p9GridHtml(n.id,'setAnchorPoint',p9Name(n.anchor[0],n.anchor[1])));
-  h+=r('x%, y%',ro(`${(n.anchor[0]*100).toFixed(0)}%, ${(n.anchor[1]*100).toFixed(0)}%`));
-  h+='<div class="pgh">Z-order &amp; State</div>';
-  h+=r('<span style="color:#C40000">Z-order</span>',iN('z',n.z)); h+=r('Visible',ck('visible',n.visible)); h+=r('Enabled',ck('enabled',n.enabled));
+  h+=r('<span style="color:#C40000">Z-order</span>',iN('z',n.z));
+  h+='<div class="pgh">Pivot</div>';
+  h+=r('',p9GridHtml(n.id,'setPivotPoint',p9Name(n.pivot[0],n.pivot[1])));
+  h+='<div class="pgh">Anchor</div>';
+  h+=r('',p9GridHtml(n.id,'setAnchorPoint',p9Name(n.anchor[0],n.anchor[1])));
+  h+='<div class="pgh">Flags</div>';
+  h+=r('Visible',ck('visible',n.visible)); h+=r('Enabled',ck('enabled',n.enabled));
   if(n.cls==='WINDOW'){
-    h+='<div class="pgh">System Buttons</div>';
     const sb=n.sysBtns||{};
     h+=r('Close',`<input type="checkbox" ${sb.close?'checked':''} onchange="pSysBtn(${n.id},'close',this.checked)">`);
     h+=r('Minimize',`<input type="checkbox" ${sb.minimize?'checked':''} onchange="pSysBtn(${n.id},'minimize',this.checked)">`);
