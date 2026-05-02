@@ -1457,7 +1457,6 @@ function exportNode(n){
   if(n.caption) L.push(`    caption      = ${ev(n.caption)}`);
   L.push(`    pos          = ${ep(n.nx)}, ${ep(n.ny)}`);
   L.push(`    size         = ${ep(n.nw)}, ${ep(n.nh)}`);
-  L.push(`    ; @${VW()}x${VH()}  px=${~~(n.nx*VW())},${~~(n.ny*VH())}  sz=${~~(n.nw*VW())}x${~~(n.nh*VH())}`);
   L.push(`    pivot        = ${n.pivot[0]}, ${n.pivot[1]}`);
   L.push(`    anchor_tl    = ${n.anchor[0]}, ${n.anchor[1]}`);
   L.push(`    anchor_br    = ${n.anchor[2]}, ${n.anchor[3]}`);
@@ -1474,7 +1473,7 @@ function exportNode(n){
   return L.join('\n');
 }
 function buildExport(){
-  const L=['; UI Layout File — UI95 Editor v0.8 / PPTK','; Coords: % of virtual canvas (resolution-independent)','; pivot: 0,0=TL  0.5,0.5=C  1,1=BR','; anchor_tl/br: fractions of parent client area',';',`@ui_file      = ${project.name}`,`@namespace    = ${project.namespace}`,`@theme        = ${project.theme}`,`@virtual_size = ${VW()} x ${VH()}`,''];
+  const L=['; UI Layout File — UI95 Editor v0.8 / PPTK','; Relative coords only: canvas size intentionally omitted','; pivot: 0,0=TL  0.5,0.5=C  1,1=BR','; anchor_tl/br: fractions of parent client area',';',`@ui_file      = ${project.name}`,`@namespace    = ${project.namespace}`,`@theme        = ${project.theme}`,''];
   project.nodes.forEach(n=>{L.push(exportNode(n));L.push('');});
   return L.join('\n');
 }
