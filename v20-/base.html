@@ -1398,8 +1398,12 @@ function buildInspector(){
   h+='<div class="pgh">Position &amp; Size (Center-based)</div>';
   h+=r('Center X %',`<input type="text" value="${fmtP(n.nx+n.nw/2)}" oninput="pCenter(${n.id},'cx',this.value)">`);
   h+=r('Center Y %',`<input type="text" value="${fmtP(n.ny+n.nh/2)}" oninput="pCenter(${n.id},'cy',this.value)">`);
+  h+=r('Center X px',`<input type="number" value="${~~((n.nx+n.nw/2)*VW())}" oninput="pCenterPx(${n.id},'cx',this.value)">`);
+  h+=r('Center Y px',`<input type="number" value="${~~((n.ny+n.nh/2)*VH())}" oninput="pCenterPx(${n.id},'cy',this.value)">`);
   h+=r('Width %',iP('nw',n.nw));
   h+=r('Height %',iP('nh',n.nh));
+  h+=r('Width px',`<input type="number" value="${~~(n.nw*VW())}" oninput="pCenterPx(${n.id},'w',this.value)">`);
+  h+=r('Height px',`<input type="number" value="${~~(n.nh*VH())}" oninput="pCenterPx(${n.id},'h',this.value)">`);
   h+='<div class="pgh">Pivot (%)</div>';
   h+=r('Point',`<select onchange="setPivotPoint(${n.id},this.value)">${P9.map(p=>`<option value="${p[0]}" ${p9Name(n.pivot[0],n.pivot[1])===p[0]?'selected':''}>${p[0]}</option>`).join('')}</select>`);
   h+=r('x%, y%',ro(`${(n.pivot[0]*100).toFixed(0)}%, ${(n.pivot[1]*100).toFixed(0)}%`));
@@ -1432,6 +1436,11 @@ function pBool(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport()
 function pNum(id,k,v){ const n=findNode(id); if(n){n[k]=parseFloat(v)||0;draw();updateExport();} }
 function pPx(id,k,v,isY,isSize){ const n=findNode(id); if(!n)return; let px=parseInt(v)||0; if(isSize&&px%2!==0)px+=1; const d=isY?VH():VW(); n[k]=px/d; if(isSize)clampEvenSize(n); draw();updateExport();buildInspector(); }
 function pCenter(id,k,v){ const n=findNode(id); if(!n)return; const val=parseP(v); if(isNaN(val))return; if(k==='cx') n.nx=val-n.nw/2; else n.ny=val-n.nh/2; draw();updateExport();buildInspector(); }
+function pCenterPx(id,k,v){ const n=findNode(id); if(!n)return; let px=parseInt(v)||0; const cx=n.nx+n.nw/2, cy=n.ny+n.nh/2; if(k==='cx'){ const cv=px/VW(); n.nx=cv-n.nw/2; }
+ else if(k==='cy'){ const cv=px/VH(); n.ny=cv-n.nh/2; }
+ else if(k==='w'){ if(px%2!==0)px+=1; const nw=px/VW(); n.nx=cx-nw/2; n.nw=nw; }
+ else if(k==='h'){ if(px%2!==0)px+=1; const nh=px/VH(); n.ny=cy-nh/2; n.nh=nh; }
+ clampEvenSize(n); draw();updateExport();buildInspector(); }
 function pMetricMode(id,v){ const n=findNode(id); if(n){ n.metricMode=(v==='absolute'?'absolute':'percent'); updateExport(); buildInspector(); } }
 function pPct(id,k,v){
   const n=findNode(id); if(!n)return;
