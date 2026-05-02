@@ -437,7 +437,6 @@ textarea{
   <button class="btn active" id="mode-select"       onclick="setMode('select')"       title="Select  [Q/Esc]">↖ Select</button>
   <button class="btn"        id="mode-move"          onclick="setMode('move')"          title="Move  [G]">✥ Move</button>
   <button class="btn"        id="mode-resize-center" onclick="setMode('resize-center')" title="Resize center  [S]">⤡ Resize</button>
-  <button class="btn"        id="mode-resize-aspect" onclick="setMode('resize-aspect')" title="Resize aspect  [A]">⊡ Aspect</button>
   <div class="tool-sep"></div>
   <span style="font-size:10px;color:#555;margin-right:2px">Create:</span>
   <button class="btn" onclick="createNode('WINDOW')"   title="Window">⊞ Win</button>
@@ -753,7 +752,7 @@ let S = {
   panX:20,panY:20,zoom:1,
   isPanning:false,panStartX:0,panStartY:0,panOriginX:0,panOriginY:0,
   opType:null,opHandle:null,opStartCanvas:{x:0,y:0},opBaseRect:null,opDragOff:{x:0,y:0},
-  modalOp:null,modalBase:null,modalStartScreen:{x:0,y:0},modalAlt:false,
+  modalOp:null,modalBase:null,modalStartScreen:{x:0,y:0},modalAlt:false,modalReturnMode:null,
   ctxX:0,ctxY:0,
 };
 
@@ -835,11 +834,11 @@ function setMode(m){
   document.querySelectorAll('[id^="mode-"]').forEach(b=>b.classList.remove('active'));
   const el=document.getElementById('mode-'+m); if(el)el.classList.add('active');
   updateStatusMode();
-  const cur={'select':'default','move':'crosshair','resize-center':'crosshair','resize-aspect':'crosshair'};
+  const cur={'select':'default','move':'crosshair','resize-center':'crosshair'};
   canvas.style.cursor=cur[m]||'default';
 }
 function updateStatusMode(){
-  const lbl={'select':'Select','move':'Move (G)','resize-center':'Resize center (S)','resize-aspect':'Resize aspect (A)'};
+  const lbl={'select':'Select','move':'Move (G)','resize-center':'Resize center (S)'};
   let txt='Mode: '+(lbl[S.editMode]||S.editMode);
   if(S.modalOp){
     const ml={'move':'Moving','resize-center':'Resizing (center)','resize-aspect':'Resizing (aspect)'};
@@ -852,7 +851,7 @@ function updateStatusMode(){
 let _lastMouseScreen={x:0,y:0};
 function startModal(op,e){
   if(!S.selectedId)return; const n=findNode(S.selectedId); if(!n)return;
-  snapshot(); S.modalOp=op; S.modalAlt=e?e.altKey:false;
+  snapshot(); S.modalOp=op; S.modalAlt=e?e.altKey:false; S.modalReturnMode=S.editMode;
   S.modalBase={nx:n.nx,ny:n.ny,nw:n.nw,nh:n.nh};
   S.modalStartScreen={x:_lastMouseScreen.x,y:_lastMouseScreen.y};
   document.getElementById('op-hint').style.display='block';
@@ -860,16 +859,20 @@ function startModal(op,e){
 }
 function confirmModal(){
   if(!S.modalOp)return;
-  S.modalOp=null; S.modalBase=null;
+  const ret=S.modalReturnMode;
+  S.modalOp=null; S.modalBase=null; S.modalReturnMode=null;
   document.getElementById('op-hint').style.display='none';
-  updateStatusMode(); updateExport(); buildInspector();
+  if(ret) setMode(ret); else updateStatusMode();
+  updateExport(); buildInspector();
 }
 function cancelModal(){
   if(!S.modalOp)return;
   if(S.undoStack.length){ const s=JSON.parse(S.undoStack[S.undoStack.length-1]); project=s.p; S.selectedId=s.sel; S.undoStack.pop(); }
-  S.modalOp=null; S.modalBase=null;
+  const ret=S.modalReturnMode;
+  S.modalOp=null; S.modalBase=null; S.modalReturnMode=null;
   document.getElementById('op-hint').style.display='none';
-  updateStatusMode(); refresh();
+  if(ret) setMode(ret); else updateStatusMode();
+  refresh();
 }
 function tickModal(e){
   if(!S.modalOp||!S.selectedId)return;
@@ -1227,71 +1230,62 @@ vpWrap.addEventListener('mousedown',e=>{ if(e.button===1){e.preventDefault();S.i
 
 // ══════════════════════════════════════════════════════════
 // CANVAS MOUSE
+// (drag/resize-center flow ported from наработки/coord.html)
 // ══════════════════════════════════════════════════════════
 canvas.addEventListener('contextmenu',e=>{ e.preventDefault(); if(S.modalOp){cancelModal();return;} const p=toCanvas(e); S.ctxX=p.x; S.ctxY=p.y; const hit=hitTest(p.x,p.y); if(hit){S.selectedId=hit.id;draw();buildInspector();buildHierarchy();} showCtx(e.clientX,e.clientY,hit); });
 canvas.addEventListener('mousedown',e=>{
   if(e.button!==0)return; e.preventDefault();
   if(S.modalOp){confirmModal();return;}
-  if(S.opType)return;
-  const {x:mx,y:my}=toCanvas(e); const sel=findNode(S.selectedId);
-  if(S.editMode==='select'){
-    const hnd=hitHandle(mx,my,sel);
-    if(hnd){snapshot();S.opType='drag-resize';S.opHandle=hnd;S.opStartCanvas={x:mx,y:my};S.opBaseRect={nx:sel.nx,ny:sel.ny,nw:sel.nw,nh:sel.nh};return;}
-    const hit=hitTest(mx,my);
-    if(hit){if(S.selectedId!==hit.id)snapshot();S.selectedId=hit.id;const ar=absRect(hit);S.opType='drag-move';S.opDragOff={x:mx-ar.x,y:my-ar.y};S.opBaseRect={nx:hit.nx,ny:hit.ny,nw:hit.nw,nh:hit.nh};}
-    else S.selectedId=null;
-    draw();buildInspector();buildHierarchy();
-    document.getElementById('st-sel').textContent=sel?`${sel.cls}: ${sel.name}`:'No selection';
-    return;
-  }
+  const {x:mx,y:my}=toCanvas(e);
   const hit=hitTest(mx,my);
-  if(hit&&S.selectedId!==hit.id){snapshot();S.selectedId=hit.id;draw();buildInspector();buildHierarchy();return;}
-  if(!S.selectedId)return;
-  const n=findNode(S.selectedId);
-  snapshot(); S.opStartCanvas={x:mx,y:my}; S.opBaseRect={nx:n.nx,ny:n.ny,nw:n.nw,nh:n.nh};
-  const mm={'move':'drag-move','resize-center':'drag-resize-center','resize-aspect':'drag-resize-aspect'};
-  S.opType=mm[S.editMode]||'drag-move';
-  if(S.editMode==='move'){const ar=absRect(n);S.opDragOff={x:mx-ar.x,y:my-ar.y};}
+
+  if(hit){
+    if(S.selectedId!==hit.id) snapshot();
+    S.selectedId=hit.id;
+    const r=absRect(hit);
+    S.opDragOff={x:mx-r.x,y:my-r.y};
+    S.opBaseRect={nx:hit.nx,ny:hit.ny,nw:hit.nw,nh:hit.nh};
+    S.opStartCanvas={x:mx,y:my};
+
+    if(S.editMode==='move') S.opType='drag-move';
+    else if(S.editMode==='resize-center') S.opType='drag-resize-center';
+    else S.opType=null;
+  }else{
+    S.selectedId=null;
+    S.opType=null;
+  }
+
+  draw(); buildInspector(); buildHierarchy();
+  const sel=findNode(S.selectedId);
+  document.getElementById('st-sel').textContent=sel?`${sel.cls}: ${sel.name}`:'No selection';
 });
 canvas.addEventListener('mousemove',e=>{
   const {x:mx,y:my}=toCanvas(e);
   document.getElementById('st-pos').textContent=`x:${(mx/VW()*100).toFixed(2)}%  y:${(my/VH()*100).toFixed(2)}%`;
   if(S.modalOp){tickModal(e);draw();return;}
-  if(S.opType){
-    const n=findNode(S.selectedId); if(!n){S.opType=null;return;}
-    const o=S.opBaseRect, grid=effectiveGrid(e), minN=grid||S.BASE_GRID;
-    if(S.opType==='drag-move'){
-      let cox=0,coy=0; if(n.parentId){const co=clientOrigin(findNode(n.parentId));cox=co.x;coy=co.y;}
-      n.nx=sg((mx-S.opDragOff.x-cox)/VW(),grid); n.ny=sg((my-S.opDragOff.y-coy)/VH(),grid);
-    } else if(S.opType==='drag-resize'){
-      const dcx=mx-S.opStartCanvas.x, dcy=my-S.opStartCanvas.y;
-      const dnx=dcx/VW(), dny=dcy/VH(); const hid=S.opHandle.id;
-      let nx=o.nx,ny=o.ny,nw=o.nw,nh=o.nh;
-      if(hid.includes('l')){nx=sg(o.nx+dnx,grid);nw=sg(o.nw-dnx,grid);}
-      if(hid.includes('r')&&!hid.includes('l'))nw=sg(o.nw+dnx,grid);
-      if(hid.includes('t')&&!hid.includes('s')){ny=sg(o.ny+dny,grid);nh=sg(o.nh-dny,grid);}
-      if(hid.includes('b'))nh=sg(o.nh+dny,grid);
-      n.nx=nx;n.ny=ny;n.nw=Math.max(minN,nw);n.nh=Math.max(minN,nh);
-    } else if(S.opType==='drag-resize-center'){
-      const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
-      const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
-      const nnw=Math.max(minN,sg(o.nw+2*dnx,grid)),nnh=Math.max(minN,sg(o.nh+2*dny,grid));
-      n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
-    } else if(S.opType==='drag-resize-aspect'){
-      const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
-      const asp=o.nw/(o.nh||0.001), dom=Math.abs(dnx)>=Math.abs(dny)?dnx:dny*asp;
-      const nnw=Math.max(minN,sg(o.nw+dom,grid)),nnh=Math.max(minN,sg(nnw/asp,grid));
-      const cx=o.nx+o.nw/2,cy=o.ny+o.nh/2;
-      n.nw=nnw;n.nh=nnh;n.nx=sg(cx-nnw/2,grid);n.ny=sg(cy-nnh/2,grid);
-    }
-    clampEvenSize(n);
-    draw();updateExport();buildInspector();return;
+  if(!S.opType||!S.selectedId){
+    if(S.editMode==='select') canvas.style.cursor=hitTest(mx,my)?'move':'crosshair';
+    return;
   }
-  if(S.editMode==='select'){
-    const sel=findNode(S.selectedId);
-    const hnd=sel?hitHandle(mx,my,sel):null;
-    canvas.style.cursor=hnd?hnd.cur:(hitTest(mx,my)?'move':'crosshair');
+
+  const n=findNode(S.selectedId); if(!n){S.opType=null;return;}
+  const o=S.opBaseRect, grid=effectiveGrid(e), minN=grid||S.BASE_GRID;
+
+  if(S.opType==='drag-move'){
+    let cox=0,coy=0;
+    if(n.parentId){const co=clientOrigin(findNode(n.parentId)); cox=co.x; coy=co.y;}
+    n.nx=sg((mx-S.opDragOff.x-cox)/VW(),grid);
+    n.ny=sg((my-S.opDragOff.y-coy)/VH(),grid);
+  }else if(S.opType==='drag-resize-center'){
+    const dnx=(mx-S.opStartCanvas.x)/VW(), dny=(my-S.opStartCanvas.y)/VH();
+    n.nw=Math.max(minN,sg(o.nw+dnx*2,grid));
+    n.nh=Math.max(minN,sg(o.nh+dny*2,grid));
+    n.nx=sg(o.nx-dnx,grid);
+    n.ny=sg(o.ny-dny,grid);
   }
+
+  clampEvenSize(n);
+  draw(); updateExport(); buildInspector();
 });
 canvas.addEventListener('mouseup',e=>{ if(e.button===0&&!S.modalOp)S.opType=null; });
 canvas.addEventListener('mouseleave',()=>{ if(!S.modalOp)S.opType=null; });
@@ -1686,12 +1680,23 @@ document.addEventListener('keydown',e=>{
     if(e.key==='Escape'){e.preventDefault();cancelModal();return;}
     return;
   }
-  if(e.key==='g'||e.key==='G'){ e.preventDefault(); if(S.editMode==='move'&&S.selectedId)startModal('move',e); else{setMode(S.editMode==='move'?'select':'move');} return; }
-  if(e.key==='s'||e.key==='S'){ e.preventDefault(); if(S.editMode==='resize-center'&&S.selectedId)startModal('resize-center',e); else setMode(S.editMode==='resize-center'?'select':'resize-center'); return; }
-  if(e.key==='a'||e.key==='A'){ e.preventDefault(); if(S.editMode==='resize-aspect'&&S.selectedId)startModal('resize-aspect',e); else setMode(S.editMode==='resize-aspect'?'select':'resize-aspect'); return; }
+  if(e.key==='g'||e.key==='G'){
+    e.preventDefault();
+    if(!S.selectedId){ setMode('move'); return; }
+    if(S.editMode!=='move') setMode('move');
+    startModal('move',e);
+    return;
+  }
+  if(e.key==='s'||e.key==='S'){
+    e.preventDefault();
+    if(!S.selectedId){ setMode('resize-center'); return; }
+    if(S.editMode==='resize-center') startModal('resize-aspect',e);
+    else { setMode('resize-center'); startModal('resize-center',e); }
+    return;
+  }
   const step=e.shiftKey?S.COARSE_GRID:S.BASE_GRID;
   if(e.key==='Delete')deleteSelected();
-  else if(e.key==='Escape'||e.key==='q'||e.key==='Q'){setMode('select');S.selectedId=null;draw();buildInspector();buildHierarchy();}
+  else if(e.key==='Escape'||e.key==='q'||e.key==='Q'){setMode('select');draw();buildInspector();buildHierarchy();}
   else if(e.key==='Home')resetView();
     else if(e.key==='ArrowLeft'  && S.selectedId){
     snapshot(); const n=findNode(S.selectedId);
