@@ -778,7 +778,7 @@ function makeNode(cls,parentId,onx,ony){
     ny:ony!=null?ony:(par?py2ny(10):0.5-d.nh/2),
     nw:d.nw, nh:d.nh,
     anchor:[0,0,0,0], pivot:[0.5,0.5],
-    visible:true, enabled:true, z:0, style:'', metricMode:'percent',
+    visible:true, enabled:true, z:0, style:'', metricMode:'absolute',
     onClick:'', onToggle:'', src:d.src||'',
     ...(cls==='WINDOW'?{sysBtns:{...d.sysBtns}}:{}),
     ...(d.items?{items:[...d.items]}:{}),
@@ -941,10 +941,6 @@ function drawWindow(n,ox,oy){
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
   if(w<4||h<4)return;
 
-  // Drop shadow (2×2 offset, black, semi-transparent)
-  _c.fillStyle='rgba(0,0,0,0.45)';
-  _c.fillRect(x+3,y+3,w,h);
-
   // Outer 1px black border
   pp_hline(x,y,w,C.black); pp_hline(x,y+h-1,w,C.black);
   pp_vline(x,y,h,C.black); pp_vline(x+w-1,y,h,C.black);
@@ -956,11 +952,9 @@ function drawWindow(n,ox,oy){
   // Title bar (inset by frame = x+2, y+2, w-4, TB_H)
   pp_titlebar(x+2,y+2,w-4,TB_H);
 
-  // Title text — 1px shadow
+  // Title text (classic flat, no shadow)
   _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
-  _c.fillStyle='#000040'; _c.textBaseline='middle';
-  _c.fillText(n.caption,x+7,y+2+TB_H/2+1);
-  _c.fillStyle=C.captxt;
+  _c.fillStyle=C.captxt; _c.textBaseline='middle';
   _c.fillText(n.caption,x+6,y+2+TB_H/2);
 
   // System buttons — right-aligned in titlebar
@@ -1368,7 +1362,7 @@ function buildInspector(){
   let h='';
   h+='<div class="pgh">Identity</div>';
   h+=r('Name',iT('name',n.name)); h+=r('Class',ro(n.cls)); h+=r('Caption',iT('caption',n.caption)); h+=r('Style',iT('style',n.style));
-  h+=r('Metrics',`<select onchange="pMetricMode(${n.id},this.value)"><option value="percent" ${(n.metricMode||'percent')==='percent'?'selected':''}>percent</option><option value="absolute" ${(n.metricMode||'percent')==='absolute'?'selected':''}>pixel</option></select>`);
+  h+=r('Metrics',`<select onchange="pMetricMode(${n.id},this.value)"><option value="absolute" ${(n.metricMode||'absolute')==='absolute'?'selected':''}>absolute</option><option value="percent" ${(n.metricMode||'absolute')==='percent'?'selected':''}>percent</option></select>`);
   h+='<div class="pgh">Position &amp; Size</div>';
   h+=r('Left %',iP('nx',n.nx)); h+=r('Top %',iP('ny',n.ny));
   h+=r('Width %',iP('nw',n.nw)); h+=r('Height %',iP('nh',n.nh));
@@ -1406,7 +1400,7 @@ function buildInspector(){
 function pStr(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pBool(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pNum(id,k,v){ const n=findNode(id); if(n){n[k]=parseFloat(v)||0;draw();updateExport();} }
-function pMetricMode(id,v){ const n=findNode(id); if(n){ n.metricMode=(v==='absolute'?'absolute':'percent'); updateExport(); buildInspector(); } }
+function pMetricMode(id,v){ const n=findNode(id); if(n){ n.metricMode=(v==='percent'?'percent':'absolute'); updateExport(); buildInspector(); } }
 function pPct(id,k,v){
   const n=findNode(id); if(!n)return;
   const val=parseP(v); if(!isNaN(val)){
@@ -1536,7 +1530,7 @@ function parseUi(text){
     let anchor=[0,0,0,0];
     if(p.anchor_tl||p.anchor_br){ const tl=p.anchor_tl?p.anchor_tl.split(',').map(s=>parseFloat(s.trim())):[0,0]; const br=p.anchor_br?p.anchor_br.split(',').map(s=>parseFloat(s.trim())):[0,0]; anchor=[tl[0]||0,tl[1]||0,br[0]||0,br[1]||0]; }
     else if(p.anchor){ const ap=p.anchor.split(',').map(parseFloat); if(ap.length>=4&&!ap.some(isNaN))anchor=ap.slice(0,4); }
-    const mm = (stripQ(p.metrics||'').toLowerCase()==='absolute') ? 'absolute' : 'percent';
+    const mm = (stripQ(p.metrics||'').toLowerCase()==='percent') ? 'percent' : 'absolute';
     const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), metricMode:mm, _parentName:p.parent||null };
     if(cls==='WINDOW')n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
     if(cls==='LISTBOX')n.items=p.items?parseItems(p.items):['Item 1','Item 2'];
