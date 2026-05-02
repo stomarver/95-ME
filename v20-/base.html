@@ -11,7 +11,7 @@
 
 body{
   background:#3A6EA5;
-  font-family:"Pixelated MS Sans Serif","MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial,sans-serif;
+  font-family:"Pixelated MS Sans Serif","MS Sans Serif","Microsoft Sans Serif","Arial",Tahoma,sans-serif;
   font-size:11px;color:#222;           /* classic Win98 text colour */
   height:100vh;display:flex;flex-direction:column;overflow:hidden;
   -webkit-font-smoothing:none;         /* disable subpixel AA */
@@ -557,7 +557,7 @@ textarea{
         <div class="win98-close-btn" onclick="hideImportModal()">✕</div>
       </div>
       <div class="dialog-body">
-        <div style="font-size:10px;color:#444">Paste layout text, or
+        <div id="import-hint" style="font-size:10px;color:#444">Paste layout text, or
           <button class="btn" style="font-size:10px;padding:0 5px" onclick="document.getElementById('ui-input').click()">Open file…</button>
         </div>
         <textarea id="import-ta" placeholder="; ui file&#10;@ui_file = my_screen&#10;&#10;my_btn:&#10;    class   = BUTTON&#10;    caption = Click me&#10;    pos     = 10%, 20%&#10;    size    = 15%, 5%"></textarea>
@@ -1520,7 +1520,7 @@ function parseUi(text){
   if(!nodes.length)log.push('⚠ No nodes found.'); else log.push(`✓ Parsed ${nodes.length} node(s) from "${meta.name}".`);
   return{meta,nodes,nextId,log};
 }
-function showImportModal(){ closeMenus(); document.getElementById('import-modal').classList.add('show'); document.getElementById('import-log').textContent=''; }
+function showImportModal(){ closeMenus(); document.querySelector('#import-box .win98-titlebar span').textContent='Import Layout'; document.getElementById('import-hint').style.display='block'; document.querySelector('#import-box .dialog-actions .btn').style.display=''; const ta=document.getElementById('import-ta'); ta.removeAttribute('readonly'); document.getElementById('import-modal').classList.add('show'); document.getElementById('import-log').textContent=''; }
 function hideImportModal(){ document.getElementById('import-modal').classList.remove('show'); }
 function doImport(){ const text=document.getElementById('import-ta').value; if(!text.trim()){document.getElementById('import-log').textContent='⚠ Nothing to import.';return;} const result=parseUi(text); document.getElementById('import-log').textContent=result.log.join('\n'); if(!result.nodes.length)return; snapshot(); Object.assign(project,{name:result.meta.name,namespace:result.meta.namespace,theme:result.meta.theme,virtualW:result.meta.virtualW,virtualH:result.meta.virtualH,nodes:result.nodes,nextId:result.nextId||project.nextId}); S.selectedId=null; hideImportModal(); refresh(); }
 document.getElementById('ui-input').onchange=function(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{document.getElementById('import-ta').value=ev.target.result;document.getElementById('import-modal').classList.add('show');}; r.readAsText(f); e.target.value=''; };
@@ -1535,14 +1535,21 @@ function cmdLoad(){ document.getElementById('file-input').click(); }
 function loadFile(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=ev=>{try{project=JSON.parse(ev.target.result);S.selectedId=null;refresh();}catch{alert('Invalid project file.');}}; r.readAsText(f); e.target.value=''; }
 function cmdExportFile(){ const b=new Blob([buildExport()],{type:'text/plain'}); const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=project.name+'.ui';a.click(); }
 
-function showAbout(){
-  document.getElementById('import-ta').value='UI95 Editor v0.8\nWin98-style layout editor and preview tool.';
+function showTextModal(title,text){
+  closeMenus();
+  document.querySelector('#import-box .win98-titlebar span').textContent=title;
+  document.getElementById('import-hint').style.display='none';
+  document.querySelector('#import-box .dialog-actions .btn').style.display='none';
+  document.getElementById('import-ta').value=text;
+  document.getElementById('import-ta').setAttribute('readonly','readonly');
   document.getElementById('import-log').textContent='';
-  showImportModal();
+  document.getElementById('import-modal').classList.add('show');
+}
+function showAbout(){
+  showTextModal('About','UI95 Editor v0.8\nWin95/98/ME inspired layout editor and preview tool.');
 }
 function showControls(){
-  document.getElementById('import-ta').value=
-    'Controls\n'+
+  showTextModal('Controls',
     'Q / Esc - Select\n'+
     'G - Move (starts immediately)\n'+
     'S - Resize center (double S = aspect)\n'+
@@ -1550,9 +1557,7 @@ function showControls(){
     'Ctrl = 2px step\n'+
     'Shift = 5px step\n'+
     'Ctrl+Shift = 10px step\n'+
-    'Alt + modifier = whole percent steps';
-  document.getElementById('import-log').textContent='';
-  showImportModal();
+    'Alt + modifier = whole percent steps');
 }
 
 // ══════════════════════════════════════════════════════════
