@@ -1338,7 +1338,7 @@ document.addEventListener('click',e=>{ if(!ctxMenu.contains(e.target))hideCtx();
 // ══════════════════════════════════════════════════════════
 function showCanvasModal(){ closeMenus(); document.getElementById('cv-w').value=VW(); document.getElementById('cv-h').value=VH(); document.getElementById('canvas-modal').classList.add('show'); }
 function hideCanvasModal(){ document.getElementById('canvas-modal').classList.remove('show'); }
-function applyCanvasSize(){ const w=parseInt(document.getElementById('cv-w').value)||800; const h=parseInt(document.getElementById('cv-h').value)||600; if(w<320||h<200||w>3840||h>2160){alert('Size out of range.');return;} snapshot(); project.virtualW=w; project.virtualH=h; hideCanvasModal(); refresh(); resetView(); }
+function applyCanvasSize(){ const w=parseInt(document.getElementById('cv-w').value)||800; const h=parseInt(document.getElementById('cv-h').value)||600; if(w<320||h<200||w>3840||h>2160){alert('Size out of range.');return;} snapshot(); const oldW=VW(), oldH=VH(); project.nodes.forEach(n=>{ if((n.metricMode||'percent')==='absolute'){ const pxX=n.nx*oldW, pxY=n.ny*oldH, pxW=n.nw*oldW, pxH=n.nh*oldH; n.nx=pxX/w; n.ny=pxY/h; n.nw=pxW/w; n.nh=pxH/h; } }); project.virtualW=w; project.virtualH=h; hideCanvasModal(); refresh(); resetView(); }
 
 // ══════════════════════════════════════════════════════════
 // HIERARCHY
@@ -1395,15 +1395,15 @@ function buildInspector(){
   h+='<div class="pgh">Identity</div>';
   h+=r('Name',iT('name',n.name)); h+=r('Class',ro(n.cls)); h+=r('Caption',iT('caption',n.caption)); h+=r('Style',iT('style',n.style));
   h+=r('Metrics',`<select onchange="pMetricMode(${n.id},this.value)"><option value="percent" ${(n.metricMode||'percent')==='percent'?'selected':''}>percent</option><option value="absolute" ${(n.metricMode||'percent')==='absolute'?'selected':''}>absolute</option></select>`);
-  h+='<div class="pgh">Position &amp; Size (Center-based)</div>';
-  h+=r('Center X %',`<input type="text" value="${fmtP(n.nx+n.nw/2)}" onchange="pCenter(${n.id},'cx',this.value)">`);
-  h+=r('Center Y %',`<input type="text" value="${fmtP(1-(n.ny+n.nh/2))}" onchange="pCenter(${n.id},'cy',this.value)">`);
-  h+=r('Center X px',`<input type="text" value="${~~((n.nx+n.nw/2)*VW())}" onchange="pCenterPx(${n.id},'cx',this.value)">`);
-  h+=r('Center Y px',`<input type="text" value="${~~((1-(n.ny+n.nh/2))*VH())}" onchange="pCenterPx(${n.id},'cy',this.value)">`);
-  h+=r('Width %',`<input type="text" value="${fmtP(n.nw)}" onchange="pPct(${n.id},'nw',this.value)">`);
-  h+=r('Height %',`<input type="text" value="${fmtP(n.nh)}" onchange="pPct(${n.id},'nh',this.value)">`);
-  h+=r('Width px',`<input type="text" value="${~~(n.nw*VW())}" onchange="pCenterPx(${n.id},'w',this.value)">`);
-  h+=r('Height px',`<input type="text" value="${~~(n.nh*VH())}" onchange="pCenterPx(${n.id},'h',this.value)">`);
+  h+='<div class="pgh">Position &amp; Size</div>';
+  h+=r('<span style="color:#005BFF">X %</span>',`<input type="text" value="${fmtP(n.nx+n.nw/2)}" onchange="pCenter(${n.id},'cx',this.value)">`);
+  h+=r('<span style="color:#0A8A2A">Y %</span>',`<input type="text" value="${fmtP(1-(n.ny+n.nh/2))}" onchange="pCenter(${n.id},'cy',this.value)">`);
+  h+=r('<span style="color:#005BFF">X px</span>',`<input type="text" value="${~~((n.nx+n.nw/2)*VW())}" onchange="pCenterPx(${n.id},'cx',this.value)">`);
+  h+=r('<span style="color:#0A8A2A">Y px</span>',`<input type="text" value="${~~((1-(n.ny+n.nh/2))*VH())}" onchange="pCenterPx(${n.id},'cy',this.value)">`);
+  h+=r('<span style="color:#005BFF">Width %</span>',`<input type="text" value="${fmtP(n.nw)}" onchange="pPct(${n.id},'nw',this.value)">`);
+  h+=r('<span style="color:#0A8A2A">Height %</span>',`<input type="text" value="${fmtP(n.nh)}" onchange="pPct(${n.id},'nh',this.value)">`);
+  h+=r('<span style="color:#005BFF">Width px</span>',`<input type="text" value="${~~(n.nw*VW())}" onchange="pCenterPx(${n.id},'w',this.value)">`);
+  h+=r('<span style="color:#0A8A2A">Height px</span>',`<input type="text" value="${~~(n.nh*VH())}" onchange="pCenterPx(${n.id},'h',this.value)">`);
   h+='<div class="pgh">Pivot (%)</div>';
   h+=r('Point',`<select onchange="setPivotPoint(${n.id},this.value)">${P9.map(p=>`<option value="${p[0]}" ${p9Name(n.pivot[0],n.pivot[1])===p[0]?'selected':''}>${p[0]}</option>`).join('')}</select>`);
   h+=r('x%, y%',ro(`${(n.pivot[0]*100).toFixed(0)}%, ${(n.pivot[1]*100).toFixed(0)}%`));
