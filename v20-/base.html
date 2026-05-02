@@ -1242,7 +1242,7 @@ canvas.addEventListener('mousedown',e=>{
     if(S.editMode==='select'){
       const hnd=hitHandle(mx,my,hit);
       if(hnd){ S.opType='drag-resize'; S.opHandle=hnd; }
-      else S.opType=null;
+      else S.opType='drag-move';
     } else if(S.editMode==='move') S.opType='drag-move';
     else if(S.editMode==='resize-center') S.opType='drag-resize-center';
     else S.opType=null;
@@ -1441,6 +1441,13 @@ function pAnchorBR(id,v){
     draw();updateExport();
   }
 }
+
+function setPivotPreset(id,px,py){
+  const n=findNode(id); if(!n)return;
+  n.pivot=[Math.max(0,Math.min(1,px)),Math.max(0,Math.min(1,py))];
+  draw();updateExport();buildInspector();
+}
+
 function setAnchorPreset(id,preset){
   const n=findNode(id); if(!n)return;
   const pr={'tl':[0,0,0,0],'c':[0.5,0.5,0.5,0.5],'stretch-h':[0,0,1,0],'stretch-v':[0,0,0,1],'fill':[0,0,1,1]};
