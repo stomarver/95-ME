@@ -778,7 +778,7 @@ function makeNode(cls,parentId,onx,ony){
     ny:ony!=null?ony:(par?py2ny(10):0.5-d.nh/2),
     nw:d.nw, nh:d.nh,
     anchor:[0,0,0,0], pivot:[0.5,0.5],
-    visible:true, enabled:true, z:0, style:'', metricMode:'absolute',
+    visible:true, enabled:true, z:0, style:'', metricMode:'percent',
     onClick:'', onToggle:'', src:d.src||'',
     ...(cls==='WINDOW'?{sysBtns:{...d.sysBtns}}:{}),
     ...(d.items?{items:[...d.items]}:{}),
@@ -1362,7 +1362,7 @@ function buildInspector(){
   let h='';
   h+='<div class="pgh">Identity</div>';
   h+=r('Name',iT('name',n.name)); h+=r('Class',ro(n.cls)); h+=r('Caption',iT('caption',n.caption)); h+=r('Style',iT('style',n.style));
-  h+=r('Metrics',`<select onchange="pMetricMode(${n.id},this.value)"><option value="absolute" ${(n.metricMode||'absolute')==='absolute'?'selected':''}>absolute</option><option value="percent" ${(n.metricMode||'absolute')==='percent'?'selected':''}>percent</option></select>`);
+  h+=r('Metrics',`<select onchange="pMetricMode(${n.id},this.value)"><option value="percent" ${(n.metricMode||'percent')==='percent'?'selected':''}>percent</option><option value="absolute" ${(n.metricMode||'percent')==='absolute'?'selected':''}>absolute</option></select>`);
   h+='<div class="pgh">Position &amp; Size</div>';
   h+=r('Left %',iP('nx',n.nx)); h+=r('Top %',iP('ny',n.ny));
   h+=r('Width %',iP('nw',n.nw)); h+=r('Height %',iP('nh',n.nh));
@@ -1400,7 +1400,7 @@ function buildInspector(){
 function pStr(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pBool(id,k,v){ const n=findNode(id); if(n){n[k]=v;draw();updateExport();} }
 function pNum(id,k,v){ const n=findNode(id); if(n){n[k]=parseFloat(v)||0;draw();updateExport();} }
-function pMetricMode(id,v){ const n=findNode(id); if(n){ n.metricMode=(v==='percent'?'percent':'absolute'); updateExport(); buildInspector(); } }
+function pMetricMode(id,v){ const n=findNode(id); if(n){ n.metricMode=(v==='absolute'?'absolute':'percent'); updateExport(); buildInspector(); } }
 function pPct(id,k,v){
   const n=findNode(id); if(!n)return;
   const val=parseP(v); if(!isNaN(val)){
@@ -1530,7 +1530,7 @@ function parseUi(text){
     let anchor=[0,0,0,0];
     if(p.anchor_tl||p.anchor_br){ const tl=p.anchor_tl?p.anchor_tl.split(',').map(s=>parseFloat(s.trim())):[0,0]; const br=p.anchor_br?p.anchor_br.split(',').map(s=>parseFloat(s.trim())):[0,0]; anchor=[tl[0]||0,tl[1]||0,br[0]||0,br[1]||0]; }
     else if(p.anchor){ const ap=p.anchor.split(',').map(parseFloat); if(ap.length>=4&&!ap.some(isNaN))anchor=ap.slice(0,4); }
-    const mm = (stripQ(p.metrics||'').toLowerCase()==='percent') ? 'percent' : 'absolute';
+    const mm = (stripQ(p.metrics||'').toLowerCase()==='absolute') ? 'absolute' : 'percent';
     const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), metricMode:mm, _parentName:p.parent||null };
     if(cls==='WINDOW')n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
     if(cls==='LISTBOX')n.items=p.items?parseItems(p.items):['Item 1','Item 2'];
