@@ -382,6 +382,17 @@ textarea{
              inset -2px -2px #dfdfdf,inset 2px 2px #0a0a0a;
   pointer-events:none;display:none;white-space:nowrap;
 }
+/* Таблицы в инспекторе */
+.inspector-table{width:100%;border-collapse:collapse;margin:2px 0;font-size:10px;background:#fff}
+.inspector-table th,.inspector-table td{border:1px solid #C0C0C0;padding:2px 4px;text-align:left}
+.inspector-table th{background:#E0E0E0;font-weight:bold}
+.inspector-table td{background:#fff}
+.inspector-table input{width:100%;box-sizing:border-box;margin:0;padding:1px 2px;background:#FFF;border:none;box-shadow:inset -1px -1px #DFDFDF,inset 1px 1px #808080;font-family:inherit;font-size:10px}
+.color-x,.color-w{color:#005BFF;font-weight:bold}
+.color-y,.color-h{color:#0A8A2A;font-weight:bold}
+.order-block{display:flex;align-items:center;gap:8px;margin-top:4px}
+.order-block label{font-weight:bold;width:50px}
+.order-block input{flex:1}
 </style>
 </head>
 <body>
@@ -1041,15 +1052,9 @@ function drawWindow(n,ox,oy){
     _c.fillStyle=SYS_PALETTE.captionText; _c.textBaseline='middle';
     _c.fillText(n.caption,titleX+3,titleY+SYS_METRICS.titlebarHeight/2);
 
-    // menu bar + bitmap text
+    // menu bar only (без File/Edit/View/Tools/Help)
     const menuY=fy+SYS_METRICS.captionHeight;
     pp_rect(x+1,menuY,w-2,SYS_METRICS.menuHeight,SYS_PALETTE.face);
-    let mx=x+3;
-    for(const label of ['File','Edit','View','Tools','Help']){
-      const t=renderBitmapText(label,'#000000');
-      _c.drawImage(t,mx,menuY+Math.max(0,((SYS_METRICS.menuHeight-t.height)/2)|0));
-      mx+=t.width+4;
-    }
   }
 
   // System buttons — right-aligned in titlebar
@@ -1447,33 +1452,31 @@ function p9GridHtml(id,fn,current){
 }
 
 function buildInspector(){
-  const el=document.getElementById('inspector');
-  const n=findNode(S.selectedId);
+  const el = document.getElementById('inspector');
+  const n = findNode(S.selectedId);
   if(!n){el.innerHTML='<div class="no-sel">— Nothing selected —<br><br><span style="font-size:10px">Click an element in the<br>Viewport or Hierarchy</span></div>';return;}
   const H=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const r=(l,v)=>`<div class="pr"><span class="pl">${l}</span><div class="pv">${v}</div></div>`;
   const iT=(k,v)=>`<input type="text" value="${H(String(v))}" oninput="pStr(${n.id},'${k}',this.value)">`;
-  const iP=(k,v)=>`<input type="text" value="${H(fmtP(v))}" oninput="pPct(${n.id},'${k}',this.value)">`;
   const iN=(k,v)=>`<input type="number" value="${H(String(v))}" oninput="pNum(${n.id},'${k}',this.value)">`;
   const ck=(k,v)=>`<input type="checkbox" ${v?'checked':''} onchange="pBool(${n.id},'${k}',this.checked)">`;
   const sl=(k,v)=>{ const o=project.commands.map(c=>`<option value="${c}"${c===v?' selected':''}>${c}</option>`).join(''); return `<select onchange="pStr(${n.id},'${k}',this.value)"><option value=""></option>${o}</select>`; };
   const ro=v=>`<span class="pro">${H(String(v))}</span>`;
-  const pBtn=(label,onclick)=>`<button class="btn" style="font-size:9px;padding:1px 4px" onclick="${onclick}">${label}</button>`;
   let h='';
   h+='<div class="pgh">Identity</div>';
   h+=r('Name',iT('name',n.name)); h+=r('Class',ro(n.cls)); h+=r('Caption',iT('caption',n.caption)); h+=r('Style',iT('style',n.style));
   h+=r('Pos metric',`<select onchange="pMetricMode(${n.id},'pos',this.value)"><option value="percent" ${((n.metricPos||'percent')==='percent')?'selected':''}>percent</option><option value="absolute" ${((n.metricPos||'percent')==='absolute')?'selected':''}>absolute</option></select>`);
   h+=r('Size metric',`<select onchange="pMetricMode(${n.id},'size',this.value)"><option value="percent" ${((n.metricSize||'percent')==='percent')?'selected':''}>percent</option><option value="absolute" ${((n.metricSize||'percent')==='absolute')?'selected':''}>absolute</option></select>`);
-  h+='<div class="pgh">Position &amp; Size</div>';
-  h+=r('<span style="color:#005BFF">X %</span>',`<input type="text" value="${fmtP(n.nx+n.nw/2)}" onchange="pCenter(${n.id},'cx',this.value)">`);
-  h+=r('<span style="color:#0A8A2A">Y %</span>',`<input type="text" value="${fmtP(1-(n.ny+n.nh/2))}" onchange="pCenter(${n.id},'cy',this.value)">`);
-  h+=r('<span style="color:#005BFF">X px</span>',`<input type="text" value="${~~((n.nx+n.nw/2)*VW())}" onchange="pCenterPx(${n.id},'cx',this.value)">`);
-  h+=r('<span style="color:#0A8A2A">Y px</span>',`<input type="text" value="${~~((1-(n.ny+n.nh/2))*VH())}" onchange="pCenterPx(${n.id},'cy',this.value)">`);
-  h+=r('<span style="color:#005BFF">Width %</span>',`<input type="text" value="${fmtP(n.nw)}" onchange="pPct(${n.id},'nw',this.value)">`);
-  h+=r('<span style="color:#0A8A2A">Height %</span>',`<input type="text" value="${fmtP(n.nh)}" onchange="pPct(${n.id},'nh',this.value)">`);
-  h+=r('<span style="color:#005BFF">Width px</span>',`<input type="text" value="${~~(n.nw*VW())}" onchange="pCenterPx(${n.id},'w',this.value)">`);
-  h+=r('<span style="color:#0A8A2A">Height px</span>',`<input type="text" value="${~~(n.nh*VH())}" onchange="pCenterPx(${n.id},'h',this.value)">`);
-  h+=r('<span style="color:#C40000">Z-order</span>',iN('z',n.z));
+  h+='<div class="pgh">Position</div>';
+  h+=`<table class="inspector-table"><tr><th></th><th class="color-x">x</th><th class="color-y">y</th></tr>
+  <tr><td>(%)</td><td><input type="text" value="${fmtP(n.nx+n.nw/2)}" onchange="pCenter(${n.id},'cx',this.value)"></td><td><input type="text" value="${fmtP(1-(n.ny+n.nh/2))}" onchange="pCenter(${n.id},'cy',this.value)"></td></tr>
+  <tr><td>px</td><td><input type="text" value="${~~((n.nx+n.nw/2)*VW())}" onchange="pCenterPx(${n.id},'cx',this.value)"></td><td><input type="text" value="${~~((1-(n.ny+n.nh/2))*VH())}" onchange="pCenterPx(${n.id},'cy',this.value)"></td></tr></table>`;
+  h+='<div class="pgh">Size</div>';
+  h+=`<table class="inspector-table"><tr><th></th><th class="color-w">w</th><th class="color-h">h</th></tr>
+  <tr><td>(%)</td><td><input type="text" value="${fmtP(n.nw)}" onchange="pPct(${n.id},'nw',this.value)"></td><td><input type="text" value="${fmtP(n.nh)}" onchange="pPct(${n.id},'nh',this.value)"></td></tr>
+  <tr><td>px</td><td><input type="text" value="${~~(n.nw*VW())}" onchange="pCenterPx(${n.id},'w',this.value)"></td><td><input type="text" value="${~~(n.nh*VH())}" onchange="pCenterPx(${n.id},'h',this.value)"></td></tr></table>`;
+  h+='<div class="pgh">Order</div>';
+  h+=`<div class="order-block"><label>Layer (Z):</label>${iN('z',n.z)}</div>`;
   h+='<div class="pgh">Pivot</div>';
   h+=r('',p9GridHtml(n.id,'setPivotPoint',p9Name(n.pivot[0],n.pivot[1])));
   h+='<div class="pgh">Anchor</div>';
