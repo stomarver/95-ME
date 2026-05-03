@@ -804,7 +804,7 @@ let S = {
 };
 
 const DEFS = {
-  WINDOW:  {nw:px2nx(220),nh:py2ny(160),caption:'Window',   header:true, sysBtns:{close:true,minimize:false,maximize:false}},
+  WINDOW:  {nw:px2nx(220),nh:py2ny(160),caption:'Window',   wsFlags:{header:true}, sysBtns:{close:true,minimize:false,maximize:false}},
   PANEL:   {nw:px2nx(160),nh:py2ny(120),caption:''},
   BUTTON:  {nw:px2nx(88), nh:py2ny(23), caption:'Button'},
   STATIC:  {nw:px2nx(110),nh:py2ny(16), caption:'Static'},
@@ -826,7 +826,7 @@ function makeNode(cls,parentId,onx,ony){
     anchor:[0,0,0,0], pivot:[0.5,0.5],
     visible:true, enabled:true, z:0, style:'', metricPos:'percent', metricSize:'percent',
     onClick:'', onToggle:'', src:d.src||'',
-    ...(cls==='WINDOW'?{header:d.header!==false, sysBtns:{...d.sysBtns}}:{}),
+    ...(cls==='WINDOW'?{wsFlags:{header:d.wsFlags?.header!==false}, sysBtns:{...d.sysBtns}}:{}),
     ...(d.items?{items:[...d.items]}:{}),
   };
 }
@@ -1018,17 +1018,20 @@ function drawWindow(n,ox,oy){
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
   if(w<4||h<4)return;
 
-  drawWin2000WindowFrame(x,y,w,h);
+  const showHeader = (n.wsFlags?.header) !== false;
+  const headerH = showHeader ? (SYS_METRICS.captionHeight + SYS_METRICS.menuHeight) : 0;
+  const fy = y - headerH;
+  const fh = h + headerH;
+  drawWin2000WindowFrame(x,fy,w,fh);
 
   // Client area fill first (чтобы header/меню всегда были поверх)
   const cy2=y+2;
   const cw=w-3, ch=Math.max(0,h-4);
   pp_rect(x+2,cy2,cw,ch,C.face);
 
-  const showHeader = n.header !== false;
   if(showHeader){
     // Title bar: градиент со смещением +1px от offset
-    const titleY = y + SYS_METRICS.titlebarOffset + 1;
+    const titleY = fy + SYS_METRICS.titlebarOffset + 1;
     const titleX = x + SYS_METRICS.titlebarOffset + 1;
     const titleW = Math.max(0, w - (SYS_METRICS.titlebarOffset + 1) * 2);
     pp_titlebar(titleX,titleY,titleW,SYS_METRICS.titlebarHeight);
@@ -1039,7 +1042,7 @@ function drawWindow(n,ox,oy){
     _c.fillText(n.caption,titleX+3,titleY+SYS_METRICS.titlebarHeight/2);
 
     // menu bar + bitmap text
-    const menuY=y+SYS_METRICS.captionHeight;
+    const menuY=fy+SYS_METRICS.captionHeight;
     pp_rect(x+1,menuY,w-2,SYS_METRICS.menuHeight,SYS_PALETTE.face);
     let mx=x+3;
     for(const label of ['File','Edit','View','Tools','Help']){
@@ -1051,7 +1054,7 @@ function drawWindow(n,ox,oy){
 
   // System buttons — right-aligned in titlebar
   if(showHeader){
-    const titleY = y + SYS_METRICS.titlebarOffset + 1;
+    const titleY = fy + SYS_METRICS.titlebarOffset + 1;
     const sb=n.sysBtns||{}; let bx=x+w-4;
     if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
     if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
@@ -1478,7 +1481,7 @@ function buildInspector(){
   h+='<div class="pgh">Flags</div>';
   h+=r('Visible',ck('visible',n.visible)); h+=r('Enabled',ck('enabled',n.enabled));
   if(n.cls==='WINDOW'){
-    h+=r('Header',`<input type="checkbox" ${(n.header!==false)?'checked':''} onchange="pBool(${n.id},'header',this.checked)">`);
+    h+=r('Header (WS)',`<input type="checkbox" ${((n.wsFlags?.header)!==false)?'checked':''} onchange="pWsFlag(${n.id},'header',this.checked)">`);
     const sb=n.sysBtns||{};
     h+=r('Close',`<input type="checkbox" ${sb.close?'checked':''} onchange="pSysBtn(${n.id},'close',this.checked)">`);
     h+=r('Minimize',`<input type="checkbox" ${sb.minimize?'checked':''} onchange="pSysBtn(${n.id},'minimize',this.checked)">`);
@@ -1553,6 +1556,7 @@ function setAnchorPreset(id,preset){
     draw();updateExport();buildInspector();
   }
 }
+function pWsFlag(id,k,v){ const n=findNode(id); if(!n)return; if(!n.wsFlags)n.wsFlags={header:true}; n.wsFlags[k]=v; draw();updateExport();buildInspector(); }
 function pSysBtn(id,k,v){ const n=findNode(id); if(!n)return; if(!n.sysBtns)n.sysBtns={close:true,minimize:false,maximize:false}; n.sysBtns[k]=v; draw();updateExport(); }
 function pItems(id,v){ const n=findNode(id); if(!n)return; n.items=v.split('\n').map(s=>s.trim()).filter(Boolean); draw();updateExport(); }
 
@@ -1580,8 +1584,10 @@ function exportNode(n){
   if(sf.length) L.push(`    dwStyle      = ${sf.join(' | ')}`);
   if(n.style)   L.push(`    style_class  = ${ev(n.style)}`);
   if(n.cls==='WINDOW'){
-    L.push(`    header       = ${n.header!==false?'true':'false'}`);
-    if(n.sysBtns){ const sb=n.sysBtns,wf=[]; if(sb.close)wf.push('WS_SYSMENU'); if(sb.minimize)wf.push('WS_MINIMIZEBOX'); if(sb.maximize)wf.push('WS_MAXIMIZEBOX'); L.push(`    ws_flags     = ${wf.length?wf.join(' | '):'0'}`); }
+    const wf=[];
+    if((n.wsFlags?.header)!==false) wf.push('WS_HEADER');
+    if(n.sysBtns){ const sb=n.sysBtns; if(sb.close)wf.push('WS_SYSMENU'); if(sb.minimize)wf.push('WS_MINIMIZEBOX'); if(sb.maximize)wf.push('WS_MAXIMIZEBOX'); }
+    L.push(`    ws_flags     = ${wf.length?wf.join(' | '):'0'}`);
   }
   if(n.onClick)  L.push(`    on_click     = ${ev(n.onClick)}`);
   if(n.onToggle) L.push(`    on_toggle    = ${ev(n.onToggle)}`);
@@ -1618,7 +1624,7 @@ function parseUi(text){
   function parsePair(s){ const pts=s.split(/[\s,x×]+/).filter(Boolean); return[toN(pts[0]||'0',false),toN(pts[1]||'0',true)]; }
   function parseBool(s){ return s==='true'||s==='1'||s==='yes'; }
   function parseItems(s){ const m=s.match(/\[([^\]]*)\]/); return(m?m[1]:s).split(',').map(x=>stripQ(x)).filter(Boolean); }
-  function parseWsF(s){ return{close:s.includes('WS_SYSMENU')||s.includes('WS_CLOSE'),minimize:s.includes('WS_MINIMIZEBOX'),maximize:s.includes('WS_MAXIMIZEBOX')}; }
+  function parseWsF(s){ return{header:s.includes('WS_HEADER'),close:s.includes('WS_SYSMENU')||s.includes('WS_CLOSE'),minimize:s.includes('WS_MINIMIZEBOX'),maximize:s.includes('WS_MAXIMIZEBOX')}; }
   const nameToId={}; let nextId=project.nextId;
   const nodes=rawNodes.map(raw=>{
     const p=raw.props,id=nextId++; nameToId[raw.name]=id;
@@ -1634,8 +1640,9 @@ function parseUi(text){
     const ms = (stripQ(p.metrics_size||'percent').toLowerCase()==='absolute') ? 'absolute' : 'percent';
     const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), metricPos:mp, metricSize:ms, _parentName:p.parent||null };
     if(cls==='WINDOW'){
-      n.header = p.header!==undefined ? parseBool(stripQ(String(p.header).toLowerCase())) : true;
-      n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
+      const wf=p.ws_flags?parseWsF(p.ws_flags):{header:true,close:true,minimize:false,maximize:false};
+      n.wsFlags={header:wf.header};
+      n.sysBtns={close:wf.close,minimize:wf.minimize,maximize:wf.maximize};
     }
     if(cls==='LISTBOX')n.items=p.items?parseItems(p.items):['Item 1','Item 2'];
     clampEvenSize(n);
@@ -1839,7 +1846,7 @@ function loadDemo(){
   const N=(px,py,pw,ph)=>({nx:px/800,ny:py/600,nw:pw/800,nh:ph/600});
   const base={visible:true,enabled:true,z:0,style:'',onClick:'',onToggle:'',src:''};
   const w1=project.nextId++;
-  a({id:w1,cls:'WINDOW',parentId:null,name:'wnd_squad',caption:'Squad',...N(20,30,240,240),...base,anchor:[0,0,0,0],pivot:[0,0],sysBtns:{close:true,minimize:true,maximize:false}});
+  a({id:w1,cls:'WINDOW',parentId:null,name:'wnd_squad',caption:'Squad',...N(20,30,240,240),...base,anchor:[0,0,0,0],pivot:[0,0],wsFlags:{header:true},sysBtns:{close:true,minimize:true,maximize:false}});
   a({id:project.nextId++,cls:'LISTBOX',parentId:w1,name:'lst_squad',caption:'',...N(6,6,210,88),...base,anchor:[0,0,1,0],pivot:[0,0],items:['⚔ Knight — Lv.5','🏹 Archer — Lv.3','🔮 Mage — Lv.4','🗡 Rogue — Lv.2']});
   a({id:project.nextId++,cls:'BUTTON',parentId:w1,name:'btn_deploy',caption:'Deploy',...N(6,100,100,23),...base,anchor:[0,0,0,0],pivot:[0,0],onClick:'game.deploy'});
   a({id:project.nextId++,cls:'BUTTON',parentId:w1,name:'btn_dismiss',caption:'Dismiss',...N(112,100,98,23),...base,anchor:[0,0,0,0],pivot:[0,0],onClick:'game.dismiss'});
@@ -1848,7 +1855,7 @@ function loadDemo(){
   a({id:project.nextId++,cls:'STATIC',parentId:w1,name:'lbl_morale',caption:'Morale: High',...N(12,166,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
   a({id:project.nextId++,cls:'STATIC',parentId:w1,name:'lbl_ver',caption:'v0.8-PPTK',...N(6,196,80,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
   const w2=project.nextId++;
-  a({id:w2,cls:'WINDOW',parentId:null,name:'wnd_detail',caption:'Unit Details',...N(278,30,252,248),...base,anchor:[0,0,0,0],pivot:[0.5,0],sysBtns:{close:true,minimize:false,maximize:true}});
+  a({id:w2,cls:'WINDOW',parentId:null,name:'wnd_detail',caption:'Unit Details',...N(278,30,252,248),...base,anchor:[0,0,0,0],pivot:[0.5,0],wsFlags:{header:true},sysBtns:{close:true,minimize:false,maximize:true}});
   a({id:project.nextId++,cls:'IMAGE',parentId:w2,name:'img_portrait',caption:'',...N(6,6,68,90),...base,anchor:[0,0,0,0],pivot:[0.5,1],src:'portrait.png'});
   a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_name',caption:'Sir Aldric',...N(80,6,156,16),...base,anchor:[0,0,1,0],pivot:[0,0]});
   a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_class',caption:'Knight — Level 5',...N(80,24,156,14),...base,anchor:[0,0,1,0],pivot:[0,0]});
@@ -1860,7 +1867,7 @@ function loadDemo(){
   a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_def',caption:'DEF:  12',...N(14,154,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
   a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_spd',caption:'SPD:  9',...N(14,172,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
   const w3=project.nextId++;
-  a({id:w3,cls:'WINDOW',parentId:null,name:'wnd_minimap',caption:'Minimap',...N(548,352,180,150),...base,anchor:[1,1,1,1],pivot:[1,1],sysBtns:{close:true,minimize:false,maximize:false}});
+  a({id:w3,cls:'WINDOW',parentId:null,name:'wnd_minimap',caption:'Minimap',...N(548,352,180,150),...base,anchor:[1,1,1,1],pivot:[1,1],wsFlags:{header:false},sysBtns:{close:true,minimize:false,maximize:false}});
   a({id:project.nextId++,cls:'IMAGE',parentId:w3,name:'img_map',caption:'',...N(4,4,156,100),...base,anchor:[0,0,1,1],pivot:[0.5,0.5],src:'minimap.png'});
   a({id:project.nextId++,cls:'CHECKBOX',parentId:w3,name:'chk_fog',caption:'Fog of war',...N(4,108,140,14),...base,anchor:[0,0,0,0],pivot:[0,0],onToggle:'game.toggle_fog'});
   const p1=project.nextId++;
