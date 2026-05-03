@@ -1020,6 +1020,11 @@ function drawWindow(n,ox,oy){
 
   drawWin2000WindowFrame(x,y,w,h);
 
+  // Client area fill first (чтобы header/меню всегда были поверх)
+  const cy2=y+2;
+  const cw=w-3, ch=Math.max(0,h-4);
+  pp_rect(x+2,cy2,cw,ch,C.face);
+
   const showHeader = n.header !== false;
   if(showHeader){
     // Title bar: градиент со смещением +1px от offset
@@ -1052,11 +1057,6 @@ function drawWindow(n,ox,oy){
     if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
     if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
   }
-
-  // Client area — sunken inside frame
-  const cy2=y+2;
-  const cw=w-3, ch=Math.max(0,h-4);
-  pp_rect(x+2,cy2,cw,ch,C.face);
 
   // Recurse children
   childrenOf(n.id).forEach(c=>drawNode(c,x+WIN_BX,cy2));
