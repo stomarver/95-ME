@@ -582,7 +582,7 @@ textarea{
 // ── Colour palette (Win98 system colours) ─────────────────
 const C = {
   // 3D surface
-  face:    '#C0C0C0',
+  face:    '#D4D0C8',
   // 3D edges
   lt:      '#FFFFFF',   // light  (top/left highlight)
   btface:  '#DFDFDF',   // button face inner highlight
@@ -590,11 +590,11 @@ const C = {
   dkshadow:'#404040',   // dark shadow (outer)
   black:   '#000000',
   // Window chrome
-  activecap:  '#000080',
-  activecap2: '#1084D0',
+  activecap:  '#0A246A',
+  activecap2: '#A6CAF0',
   captxt:     '#FFFFFF',
   // Canvas desktop
-  desktop:    '#008080',
+  desktop:    '#3A6EA5',
   // Selection
   selbg:   '#000080',
   seltxt:  '#FFFFFF',
@@ -653,9 +653,9 @@ function pp_titlebar(x,y,w,h){
   x=~~x;y=~~y;w=~~w;h=~~h;
   for(let i=0;i<w;i++){
     const t=i/Math.max(w-1,1);
-    const r=Math.round(0  +t*28);
-    const g=Math.round(0  +t*92);
-    const b=Math.round(128+t*(185-128));
+    const r=Math.round(10  +t*(166-10));
+    const g=Math.round(36  +t*(202-36));
+    const b=Math.round(106 +t*(240-106));
     _c.fillStyle=`rgb(${r},${g},${b})`;
     _c.fillRect(x+i,y,1,h);
   }
@@ -923,9 +923,12 @@ function toggleGrid(){ S.snapGrid=!S.snapGrid; document.getElementById('btn-grid
 // GEOMETRY
 // ══════════════════════════════════════════════════════════
 const SYS_METRICS = {
-  captionHeight: 20,
-  windowBorderX: 2,
-  windowClientOffsetY: 22,
+  captionHeight: 12,
+  titlebarHeight: 18,
+  titlebarOffset: 2,
+  menuHeight: 10,
+  windowBorderX: 1,
+  windowClientOffsetY: 23,
   sysButtonW: 15,
   sysButtonH: 14,
   sysButtonGap: 16,
@@ -935,7 +938,8 @@ const SYS_METRICS = {
   buttonMinH: 16
 };
 const SYS_PALETTE = {
-  face:'#C0C0C0', light:'#FFFFFF', shadow:'#808080', dark:'#404040', caption:'#000080', captionText:'#FFFFFF'
+  face:'#D4D0C8', light:'#FFFFFF', shadow:'#808080', dark:'#404040',
+  captionStart:'#0A246A', captionEnd:'#A6CAF0', captionText:'#FFFFFF'
 };
 const TB_H=SYS_METRICS.captionHeight, WIN_BX=SYS_METRICS.windowBorderX, WIN_BY=SYS_METRICS.windowClientOffsetY;
 function absRect(n){
@@ -968,33 +972,37 @@ function drawWindow(n,ox,oy){
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
   if(w<4||h<4)return;
 
-  // Outer 1px black border
-  pp_hline(x,y,w,C.black); pp_hline(x,y+h-1,w,C.black);
-  pp_vline(x,y,h,C.black); pp_vline(x+w-1,y,h,C.black);
+  pp_rect(x,y,w,h,C.face);
+  // Win2000 classic frame (без чёрной внешней обводки по периметру)
+  pp_hline(x+1,y+1,w-2,C.light);
+  pp_vline(x+1,y+1,h-2,C.light);
+  pp_vline(x+w-2,y+1,h-2,C.shadow);
+  pp_hline(x+1,y+h-2,w-2,C.shadow);
+  // правая и нижняя кромка остаются тёмными, как в эталоне
+  pp_vline(x+w-1,y,h,C.dark);
+  pp_hline(x,y+h-1,w,C.dark);
 
-  // Window frame fill + 3D raised border (inset 1px)
-  pp_rect(x+1,y+1,w-2,h-2,C.face);
-  pp_raised(x+1,y+1,w-2,h-2);
-
-  // Title bar (inset by frame = x+2, y+2, w-4, TB_H)
-  pp_titlebar(x+2,y+2,w-4,TB_H);
+  // Title bar: градиент со смещением +1px от offset
+  const titleY = y + SYS_METRICS.titlebarOffset + 1;
+  const titleX = x + SYS_METRICS.titlebarOffset + 1;
+  const titleW = Math.max(0, w - (SYS_METRICS.titlebarOffset + 1) * 2);
+  pp_titlebar(titleX,titleY,titleW,SYS_METRICS.titlebarHeight);
 
   // Title text (classic flat, no shadow)
   _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
   _c.fillStyle=C.captxt; _c.textBaseline='middle';
-  _c.fillText(n.caption,x+6,y+2+TB_H/2);
+  _c.fillText(n.caption,titleX+3,titleY+SYS_METRICS.titlebarHeight/2);
 
   // System buttons — right-aligned in titlebar
   const sb=n.sysBtns||{}; let bx=x+w-4;
-  if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
-  if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
-  if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
+  if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
+  if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
+  if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
 
   // Client area — sunken inside frame
-  const cy2=y+2+TB_H;
-  const cw=w-4, ch=h-TB_H-4;
-  pp_rect(x+2,cy2,cw,ch,C.face);
-  pp_sunken(x+2,cy2,cw,ch);
+  const cy2=y+SYS_METRICS.captionHeight+SYS_METRICS.menuHeight;
+  const cw=w-2, ch=Math.max(0,h-SYS_METRICS.captionHeight-SYS_METRICS.menuHeight-1);
+  pp_rect(x+1,cy2,cw,ch,C.face);
 
   // Recurse children
   childrenOf(n.id).forEach(c=>drawNode(c,x+WIN_BX,cy2));
@@ -1013,11 +1021,13 @@ function drawPanel(n,ox,oy){
 function drawButton(n,ox,oy){
   const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
-  // Black outer border
-  pp_hline(x,y,w,C.black); pp_hline(x,y+h-1,w,C.black);
-  pp_vline(x,y,h,C.black); pp_vline(x+w-1,y,h,C.black);
-  pp_rect(x+1,y+1,w-2,h-2,C.face);
-  pp_raised(x+1,y+1,w-2,h-2);
+  pp_rect(x,y,w,h,C.face);
+  pp_hline(x,y,w,C.light);
+  pp_vline(x,y,h,C.light);
+  pp_vline(x+w-2,y+1,h-2,C.shadow);
+  pp_hline(x+1,y+h-2,w-2,C.shadow);
+  pp_vline(x+w-1,y,h,C.dark);
+  pp_hline(x,y+h-1,w,C.dark);
   // Focus rect (1px dotted inner)
   _c.save(); _c.strokeStyle=C.black; _c.lineWidth=1; _c.setLineDash([1,1]);
   _c.strokeRect(x+3.5,y+3.5,w-7,h-7); _c.setLineDash([]); _c.restore();
