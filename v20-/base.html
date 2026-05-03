@@ -804,7 +804,7 @@ let S = {
 };
 
 const DEFS = {
-  WINDOW:  {nw:px2nx(220),nh:py2ny(160),caption:'Window',   sysBtns:{close:true,minimize:false,maximize:false}},
+  WINDOW:  {nw:px2nx(220),nh:py2ny(160),caption:'Window',   header:true, sysBtns:{close:true,minimize:false,maximize:false}},
   PANEL:   {nw:px2nx(160),nh:py2ny(120),caption:''},
   BUTTON:  {nw:px2nx(88), nh:py2ny(23), caption:'Button'},
   STATIC:  {nw:px2nx(110),nh:py2ny(16), caption:'Static'},
@@ -826,7 +826,7 @@ function makeNode(cls,parentId,onx,ony){
     anchor:[0,0,0,0], pivot:[0.5,0.5],
     visible:true, enabled:true, z:0, style:'', metricPos:'percent', metricSize:'percent',
     onClick:'', onToggle:'', src:d.src||'',
-    ...(cls==='WINDOW'?{sysBtns:{...d.sysBtns}}:{}),
+    ...(cls==='WINDOW'?{header:d.header!==false, sysBtns:{...d.sysBtns}}:{}),
     ...(d.items?{items:[...d.items]}:{}),
   };
 }
@@ -1478,6 +1478,7 @@ function buildInspector(){
   h+='<div class="pgh">Flags</div>';
   h+=r('Visible',ck('visible',n.visible)); h+=r('Enabled',ck('enabled',n.enabled));
   if(n.cls==='WINDOW'){
+    h+=r('Header',`<input type="checkbox" ${(n.header!==false)?'checked':''} onchange="pBool(${n.id},'header',this.checked)">`);
     const sb=n.sysBtns||{};
     h+=r('Close',`<input type="checkbox" ${sb.close?'checked':''} onchange="pSysBtn(${n.id},'close',this.checked)">`);
     h+=r('Minimize',`<input type="checkbox" ${sb.minimize?'checked':''} onchange="pSysBtn(${n.id},'minimize',this.checked)">`);
@@ -1578,7 +1579,10 @@ function exportNode(n){
   if(n.z) L.push(`    z_order      = ${n.z}`);
   if(sf.length) L.push(`    dwStyle      = ${sf.join(' | ')}`);
   if(n.style)   L.push(`    style_class  = ${ev(n.style)}`);
-  if(n.cls==='WINDOW'&&n.sysBtns){ const sb=n.sysBtns,wf=[]; if(sb.close)wf.push('WS_SYSMENU'); if(sb.minimize)wf.push('WS_MINIMIZEBOX'); if(sb.maximize)wf.push('WS_MAXIMIZEBOX'); L.push(`    ws_flags     = ${wf.length?wf.join(' | '):'0'}`); }
+  if(n.cls==='WINDOW'){
+    L.push(`    header       = ${n.header!==false?'true':'false'}`);
+    if(n.sysBtns){ const sb=n.sysBtns,wf=[]; if(sb.close)wf.push('WS_SYSMENU'); if(sb.minimize)wf.push('WS_MINIMIZEBOX'); if(sb.maximize)wf.push('WS_MAXIMIZEBOX'); L.push(`    ws_flags     = ${wf.length?wf.join(' | '):'0'}`); }
+  }
   if(n.onClick)  L.push(`    on_click     = ${ev(n.onClick)}`);
   if(n.onToggle) L.push(`    on_toggle    = ${ev(n.onToggle)}`);
   if(n.cls==='IMAGE'&&n.src) L.push(`    lpszSrc      = ${ev(n.src)}`);
@@ -1629,7 +1633,10 @@ function parseUi(text){
     const mp = (stripQ(p.metrics_pos||'percent').toLowerCase()==='absolute') ? 'absolute' : 'percent';
     const ms = (stripQ(p.metrics_size||'percent').toLowerCase()==='absolute') ? 'absolute' : 'percent';
     const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), metricPos:mp, metricSize:ms, _parentName:p.parent||null };
-    if(cls==='WINDOW')n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
+    if(cls==='WINDOW'){
+      n.header = p.header!==undefined ? parseBool(stripQ(String(p.header).toLowerCase())) : true;
+      n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
+    }
     if(cls==='LISTBOX')n.items=p.items?parseItems(p.items):['Item 1','Item 2'];
     clampEvenSize(n);
     return n;
