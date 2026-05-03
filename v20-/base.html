@@ -681,6 +681,32 @@ function renderBitmapText(txt,col){
   return cn;
 }
 
+function drawWin2000WindowFrame(x,y,w,h){
+  // fill
+  pp_rect(x,y,w,h,SYS_PALETTE.face);
+  // inner 1px highlight/shadow at inset=1
+  pp_hline(x+1,y+1,w-2,SYS_PALETTE.light);     // top-light
+  pp_vline(x+1,y+1,h-2,SYS_PALETTE.light);     // left-light
+  pp_vline(x+w-2,y+1,h-2,SYS_PALETTE.shadow);  // right-shadow (inner)
+  pp_hline(x+1,y+h-2,w-2,SYS_PALETTE.shadow);  // bottom-shadow (inner)
+  // outer right/bottom dark edge
+  pp_vline(x+w-1,y,h,SYS_PALETTE.dark);        // right-outer
+  pp_hline(x,y+h-1,w,SYS_PALETTE.dark);        // bottom-outer
+}
+
+function drawWin2000ButtonFrame(x,y,w,h){
+  pp_rect(x,y,w,h,SYS_PALETTE.face);
+  // button top/left highlight goes from outer edge (as in reference)
+  pp_hline(x,y,w,SYS_PALETTE.light);           // top-light
+  pp_vline(x,y,h,SYS_PALETTE.light);           // left-light
+  // inner shadow at 1px inset
+  pp_vline(x+w-2,y+1,h-2,SYS_PALETTE.shadow);  // right-shadow
+  pp_hline(x+1,y+h-2,w-2,SYS_PALETTE.shadow);  // bottom-shadow
+  // outer dark edge
+  pp_vline(x+w-1,y,h,SYS_PALETTE.dark);        // right-outer
+  pp_hline(x,y+h-1,w,SYS_PALETTE.dark);        // bottom-outer
+}
+
 // Draw text with Win98 system font
 function pp_text(txt,x,y,col,bold,size){
   _c.font=(bold?'bold ':'')+`${size??11}px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial`;
@@ -992,14 +1018,7 @@ function drawWindow(n,ox,oy){
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
   if(w<4||h<4)return;
 
-  pp_rect(x,y,w,h,SYS_PALETTE.face);
-  // каноничная 6-линейная рамка как в эталоне
-  pp_hline(x+1,y+1,w-2,SYS_PALETTE.light);
-  pp_vline(x+1,y+1,h-2,SYS_PALETTE.light);
-  pp_vline(x+w-2,y+1,h-2,SYS_PALETTE.shadow);
-  pp_hline(x+1,y+h-2,w-2,SYS_PALETTE.shadow);
-  pp_vline(x+w-1,y,h,SYS_PALETTE.dark);
-  pp_hline(x,y+h-1,w,SYS_PALETTE.dark);
+  drawWin2000WindowFrame(x,y,w,h);
 
   // Title bar: градиент со смещением +1px от offset
   const titleY = y + SYS_METRICS.titlebarOffset + 1;
@@ -1050,13 +1069,7 @@ function drawPanel(n,ox,oy){
 function drawButton(n,ox,oy){
   const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
-  pp_rect(x,y,w,h,SYS_PALETTE.face);
-  pp_hline(x,y,w,SYS_PALETTE.light);
-  pp_vline(x,y,h,SYS_PALETTE.light);
-  pp_vline(x+w-2,y+1,h-2,SYS_PALETTE.shadow);
-  pp_hline(x+1,y+h-2,w-2,SYS_PALETTE.shadow);
-  pp_vline(x+w-1,y,h,SYS_PALETTE.dark);
-  pp_hline(x,y+h-1,w,SYS_PALETTE.dark);
+  drawWin2000ButtonFrame(x,y,w,h);
   // Focus rect (1px dotted inner)
   _c.save(); _c.strokeStyle=C.black; _c.lineWidth=1; _c.setLineDash([1,1]);
   _c.strokeRect(x+3.5,y+3.5,w-7,h-7); _c.setLineDash([]); _c.restore();
