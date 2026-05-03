@@ -974,7 +974,7 @@ const SYS_METRICS = {
   titlebarOffset: 2,
   menuHeight: 10,
   windowBorderX: 1,
-  windowClientOffsetY: 23,
+  windowClientOffsetY: 1,
   sysButtonW: 15,
   sysButtonH: 14,
   sysButtonGap: 16,
@@ -1020,37 +1020,43 @@ function drawWindow(n,ox,oy){
 
   drawWin2000WindowFrame(x,y,w,h);
 
-  // Title bar: градиент со смещением +1px от offset
-  const titleY = y + SYS_METRICS.titlebarOffset + 1;
-  const titleX = x + SYS_METRICS.titlebarOffset + 1;
-  const titleW = Math.max(0, w - (SYS_METRICS.titlebarOffset + 1) * 2);
-  pp_titlebar(titleX,titleY,titleW,SYS_METRICS.titlebarHeight);
+  const showHeader = n.header !== false;
+  if(showHeader){
+    // Title bar: градиент со смещением +1px от offset
+    const titleY = y + SYS_METRICS.titlebarOffset + 1;
+    const titleX = x + SYS_METRICS.titlebarOffset + 1;
+    const titleW = Math.max(0, w - (SYS_METRICS.titlebarOffset + 1) * 2);
+    pp_titlebar(titleX,titleY,titleW,SYS_METRICS.titlebarHeight);
 
-  // Title text (classic flat, no shadow)
-  _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
-  _c.fillStyle=SYS_PALETTE.captionText; _c.textBaseline='middle';
-  _c.fillText(n.caption,titleX+3,titleY+SYS_METRICS.titlebarHeight/2);
+    // Title text (classic flat, no shadow)
+    _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+    _c.fillStyle=SYS_PALETTE.captionText; _c.textBaseline='middle';
+    _c.fillText(n.caption,titleX+3,titleY+SYS_METRICS.titlebarHeight/2);
 
-  // menu bar + bitmap text
-  const menuY=y+SYS_METRICS.captionHeight;
-  pp_rect(x+1,menuY,w-2,SYS_METRICS.menuHeight,SYS_PALETTE.face);
-  let mx=x+3;
-  for(const label of ['File','Edit','View','Tools','Help']){
-    const t=renderBitmapText(label,'#000000');
-    _c.drawImage(t,mx,menuY+Math.max(0,((SYS_METRICS.menuHeight-t.height)/2)|0));
-    mx+=t.width+4;
+    // menu bar + bitmap text
+    const menuY=y+SYS_METRICS.captionHeight;
+    pp_rect(x+1,menuY,w-2,SYS_METRICS.menuHeight,SYS_PALETTE.face);
+    let mx=x+3;
+    for(const label of ['File','Edit','View','Tools','Help']){
+      const t=renderBitmapText(label,'#000000');
+      _c.drawImage(t,mx,menuY+Math.max(0,((SYS_METRICS.menuHeight-t.height)/2)|0));
+      mx+=t.width+4;
+    }
   }
 
   // System buttons — right-aligned in titlebar
-  const sb=n.sysBtns||{}; let bx=x+w-4;
-  if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
-  if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
-  if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
+  if(showHeader){
+    const titleY = y + SYS_METRICS.titlebarOffset + 1;
+    const sb=n.sysBtns||{}; let bx=x+w-4;
+    if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
+    if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
+    if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
+  }
 
   // Client area — sunken inside frame
-  const cy2=y+SYS_METRICS.captionHeight+SYS_METRICS.menuHeight;
-  const cw=w-2, ch=Math.max(0,h-SYS_METRICS.captionHeight-SYS_METRICS.menuHeight-1);
-  pp_rect(x+1,cy2,cw,ch,C.face);
+  const cy2=y+2;
+  const cw=w-3, ch=Math.max(0,h-4);
+  pp_rect(x+2,cy2,cw,ch,C.face);
 
   // Recurse children
   childrenOf(n.id).forEach(c=>drawNode(c,x+WIN_BX,cy2));
