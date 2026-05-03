@@ -602,6 +602,8 @@ const C = {
   white:   '#FFFFFF',
   gray:    '#808080',
 };
+C.light = C.lt;
+C.dark = C.dkshadow;
 
 // ── PPTK drawing primitives ───────────────────────────────
 let _c;  // current canvas context — set in draw()
@@ -651,14 +653,32 @@ function pp_etched_h(x,y,x2){
 // #000080 to #1C5CB9 (classic active, 2px tall lines)
 function pp_titlebar(x,y,w,h){
   x=~~x;y=~~y;w=~~w;h=~~h;
+  if(w<=0||h<=0)return;
   for(let i=0;i<w;i++){
     const t=i/Math.max(w-1,1);
-    const r=Math.round(10  +t*(166-10));
-    const g=Math.round(36  +t*(202-36));
-    const b=Math.round(106 +t*(240-106));
+    const r=Math.round(10+t*(166-10));
+    const g=Math.round(36+t*(202-36));
+    const b=Math.round(106+t*(240-106));
     _c.fillStyle=`rgb(${r},${g},${b})`;
     _c.fillRect(x+i,y,1,h);
   }
+}
+
+const FONT_STRING='11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+function renderBitmapText(txt,col){
+  const m=document.createElement('canvas').getContext('2d');
+  m.font=FONT_STRING;
+  const w=Math.max(1,Math.ceil(m.measureText(txt).width));
+  const h=11;
+  const cn=document.createElement('canvas');
+  cn.width=w; cn.height=h;
+  const cc=cn.getContext('2d');
+  cc.imageSmoothingEnabled=false;
+  cc.font=FONT_STRING;
+  cc.textBaseline='top';
+  cc.fillStyle=col;
+  cc.fillText(txt,0,0);
+  return cn;
 }
 
 // Draw text with Win98 system font
@@ -972,15 +992,14 @@ function drawWindow(n,ox,oy){
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
   if(w<4||h<4)return;
 
-  pp_rect(x,y,w,h,C.face);
-  // Win2000 classic frame (без чёрной внешней обводки по периметру)
-  pp_hline(x+1,y+1,w-2,C.light);
-  pp_vline(x+1,y+1,h-2,C.light);
-  pp_vline(x+w-2,y+1,h-2,C.shadow);
-  pp_hline(x+1,y+h-2,w-2,C.shadow);
-  // правая и нижняя кромка остаются тёмными, как в эталоне
-  pp_vline(x+w-1,y,h,C.dark);
-  pp_hline(x,y+h-1,w,C.dark);
+  pp_rect(x,y,w,h,SYS_PALETTE.face);
+  // каноничная 6-линейная рамка как в эталоне
+  pp_hline(x+1,y+1,w-2,SYS_PALETTE.light);
+  pp_vline(x+1,y+1,h-2,SYS_PALETTE.light);
+  pp_vline(x+w-2,y+1,h-2,SYS_PALETTE.shadow);
+  pp_hline(x+1,y+h-2,w-2,SYS_PALETTE.shadow);
+  pp_vline(x+w-1,y,h,SYS_PALETTE.dark);
+  pp_hline(x,y+h-1,w,SYS_PALETTE.dark);
 
   // Title bar: градиент со смещением +1px от offset
   const titleY = y + SYS_METRICS.titlebarOffset + 1;
@@ -990,8 +1009,18 @@ function drawWindow(n,ox,oy){
 
   // Title text (classic flat, no shadow)
   _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
-  _c.fillStyle=C.captxt; _c.textBaseline='middle';
+  _c.fillStyle=SYS_PALETTE.captionText; _c.textBaseline='middle';
   _c.fillText(n.caption,titleX+3,titleY+SYS_METRICS.titlebarHeight/2);
+
+  // menu bar + bitmap text
+  const menuY=y+SYS_METRICS.captionHeight;
+  pp_rect(x+1,menuY,w-2,SYS_METRICS.menuHeight,SYS_PALETTE.face);
+  let mx=x+3;
+  for(const label of ['File','Edit','View','Tools','Help']){
+    const t=renderBitmapText(label,'#000000');
+    _c.drawImage(t,mx,menuY+Math.max(0,((SYS_METRICS.menuHeight-t.height)/2)|0));
+    mx+=t.width+4;
+  }
 
   // System buttons — right-aligned in titlebar
   const sb=n.sysBtns||{}; let bx=x+w-4;
@@ -1021,13 +1050,13 @@ function drawPanel(n,ox,oy){
 function drawButton(n,ox,oy){
   const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
-  pp_rect(x,y,w,h,C.face);
-  pp_hline(x,y,w,C.light);
-  pp_vline(x,y,h,C.light);
-  pp_vline(x+w-2,y+1,h-2,C.shadow);
-  pp_hline(x+1,y+h-2,w-2,C.shadow);
-  pp_vline(x+w-1,y,h,C.dark);
-  pp_hline(x,y+h-1,w,C.dark);
+  pp_rect(x,y,w,h,SYS_PALETTE.face);
+  pp_hline(x,y,w,SYS_PALETTE.light);
+  pp_vline(x,y,h,SYS_PALETTE.light);
+  pp_vline(x+w-2,y+1,h-2,SYS_PALETTE.shadow);
+  pp_hline(x+1,y+h-2,w-2,SYS_PALETTE.shadow);
+  pp_vline(x+w-1,y,h,SYS_PALETTE.dark);
+  pp_hline(x,y+h-1,w,SYS_PALETTE.dark);
   // Focus rect (1px dotted inner)
   _c.save(); _c.strokeStyle=C.black; _c.lineWidth=1; _c.setLineDash([1,1]);
   _c.strokeRect(x+3.5,y+3.5,w-7,h-7); _c.setLineDash([]); _c.restore();
