@@ -1884,10 +1884,27 @@ function loadDemo(){
 // INIT
 // ══════════════════════════════════════════════════════════
 function refresh(){ draw(); buildHierarchy(); buildInspector(); updateExport(); }
+function runEditorAudit(){
+  const issues=[];
+  const byId=new Map();
+  for(const n of project.nodes){
+    if(byId.has(n.id)) issues.push(`Duplicate id: ${n.id}`);
+    byId.set(n.id,n);
+    if(!Number.isFinite(n.nx)||!Number.isFinite(n.ny)||!Number.isFinite(n.nw)||!Number.isFinite(n.nh)) issues.push(`NaN geometry: ${n.name}`);
+    if(n.nw<=0||n.nh<=0) issues.push(`Non-positive size: ${n.name}`);
+    if(n.cls==='WINDOW' && !n.wsFlags) issues.push(`Missing wsFlags on window: ${n.name}`);
+  }
+  for(const n of project.nodes){
+    if(n.parentId!=null && !byId.has(n.parentId)) issues.push(`Broken parentId(${n.parentId}) on ${n.name}`);
+  }
+  if(issues.length) console.warn('UI95 audit issues:', issues);
+  else console.info('UI95 audit: OK');
+}
 loadDemo();
 setMode('select');
 requestAnimationFrame(()=>requestAnimationFrame(resetView));
 refresh();
+runEditorAudit();
 </script>
 </body>
 </html>
