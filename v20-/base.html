@@ -382,6 +382,17 @@ textarea{
              inset -2px -2px #dfdfdf,inset 2px 2px #0a0a0a;
   pointer-events:none;display:none;white-space:nowrap;
 }
+/* Таблицы в инспекторе */
+.inspector-table{width:100%;border-collapse:collapse;margin:2px 0;font-size:10px;background:#fff}
+.inspector-table th,.inspector-table td{border:1px solid #C0C0C0;padding:2px 4px;text-align:left}
+.inspector-table th{background:#E0E0E0;font-weight:bold}
+.inspector-table td{background:#fff}
+.inspector-table input{width:100%;box-sizing:border-box;margin:0;padding:1px 2px;background:#FFF;border:none;box-shadow:inset -1px -1px #DFDFDF,inset 1px 1px #808080;font-family:inherit;font-size:10px}
+.color-x,.color-w{color:#005BFF;font-weight:bold}
+.color-y,.color-h{color:#0A8A2A;font-weight:bold}
+.order-block{display:flex;align-items:center;gap:8px;margin-top:4px}
+.order-block label{font-weight:bold;width:50px}
+.order-block input{flex:1}
 </style>
 </head>
 <body>
@@ -582,7 +593,7 @@ textarea{
 // ── Colour palette (Win98 system colours) ─────────────────
 const C = {
   // 3D surface
-  face:    '#C0C0C0',
+  face:    '#D4D0C8',
   // 3D edges
   lt:      '#FFFFFF',   // light  (top/left highlight)
   btface:  '#DFDFDF',   // button face inner highlight
@@ -590,11 +601,11 @@ const C = {
   dkshadow:'#404040',   // dark shadow (outer)
   black:   '#000000',
   // Window chrome
-  activecap:  '#000080',
-  activecap2: '#1084D0',
+  activecap:  '#0A246A',
+  activecap2: '#A6CAF0',
   captxt:     '#FFFFFF',
   // Canvas desktop
-  desktop:    '#008080',
+  desktop:    '#3A6EA5',
   // Selection
   selbg:   '#000080',
   seltxt:  '#FFFFFF',
@@ -602,6 +613,8 @@ const C = {
   white:   '#FFFFFF',
   gray:    '#808080',
 };
+C.light = C.lt;
+C.dark = C.dkshadow;
 
 // ── PPTK drawing primitives ───────────────────────────────
 let _c;  // current canvas context — set in draw()
@@ -651,14 +664,58 @@ function pp_etched_h(x,y,x2){
 // #000080 to #1C5CB9 (classic active, 2px tall lines)
 function pp_titlebar(x,y,w,h){
   x=~~x;y=~~y;w=~~w;h=~~h;
+  if(w<=0||h<=0)return;
   for(let i=0;i<w;i++){
     const t=i/Math.max(w-1,1);
-    const r=Math.round(0  +t*28);
-    const g=Math.round(0  +t*92);
-    const b=Math.round(128+t*(185-128));
+    const r=Math.round(10+t*(166-10));
+    const g=Math.round(36+t*(202-36));
+    const b=Math.round(106+t*(240-106));
     _c.fillStyle=`rgb(${r},${g},${b})`;
     _c.fillRect(x+i,y,1,h);
   }
+}
+
+const FONT_STRING='11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+function renderBitmapText(txt,col){
+  const m=document.createElement('canvas').getContext('2d');
+  m.font=FONT_STRING;
+  const w=Math.max(1,Math.ceil(m.measureText(txt).width));
+  const h=11;
+  const cn=document.createElement('canvas');
+  cn.width=w; cn.height=h;
+  const cc=cn.getContext('2d');
+  cc.imageSmoothingEnabled=false;
+  cc.font=FONT_STRING;
+  cc.textBaseline='top';
+  cc.fillStyle=col;
+  cc.fillText(txt,0,0);
+  return cn;
+}
+
+function drawWin2000WindowFrame(x,y,w,h){
+  // fill
+  pp_rect(x,y,w,h,SYS_PALETTE.face);
+  // inner 1px highlight/shadow at inset=1
+  pp_hline(x+1,y+1,w-2,SYS_PALETTE.light);     // top-light
+  pp_vline(x+1,y+1,h-2,SYS_PALETTE.light);     // left-light
+  pp_vline(x+w-2,y+1,h-2,SYS_PALETTE.shadow);  // right-shadow (inner)
+  pp_hline(x+1,y+h-2,w-2,SYS_PALETTE.shadow);  // bottom-shadow (inner)
+  // outer right/bottom dark edge
+  pp_vline(x+w-1,y,h,SYS_PALETTE.dark);        // right-outer
+  pp_hline(x,y+h-1,w,SYS_PALETTE.dark);        // bottom-outer
+}
+
+function drawWin2000ButtonFrame(x,y,w,h){
+  pp_rect(x,y,w,h,SYS_PALETTE.face);
+  // button top/left highlight goes from outer edge (as in reference)
+  pp_hline(x,y,w,SYS_PALETTE.light);           // top-light
+  pp_vline(x,y,h,SYS_PALETTE.light);           // left-light
+  // inner shadow at 1px inset
+  pp_vline(x+w-2,y+1,h-2,SYS_PALETTE.shadow);  // right-shadow
+  pp_hline(x+1,y+h-2,w-2,SYS_PALETTE.shadow);  // bottom-shadow
+  // outer dark edge
+  pp_vline(x+w-1,y,h,SYS_PALETTE.dark);        // right-outer
+  pp_hline(x,y+h-1,w,SYS_PALETTE.dark);        // bottom-outer
 }
 
 // Draw text with Win98 system font
@@ -758,7 +815,7 @@ let S = {
 };
 
 const DEFS = {
-  WINDOW:  {nw:px2nx(220),nh:py2ny(160),caption:'Window',   sysBtns:{close:true,minimize:false,maximize:false}},
+  WINDOW:  {nw:px2nx(220),nh:py2ny(160),caption:'Window',   wsFlags:{header:true}, sysBtns:{close:true,minimize:false,maximize:false}},
   PANEL:   {nw:px2nx(160),nh:py2ny(120),caption:''},
   BUTTON:  {nw:px2nx(88), nh:py2ny(23), caption:'Button'},
   STATIC:  {nw:px2nx(110),nh:py2ny(16), caption:'Static'},
@@ -780,7 +837,7 @@ function makeNode(cls,parentId,onx,ony){
     anchor:[0,0,0,0], pivot:[0.5,0.5],
     visible:true, enabled:true, z:0, style:'', metricPos:'percent', metricSize:'percent',
     onClick:'', onToggle:'', src:d.src||'',
-    ...(cls==='WINDOW'?{sysBtns:{...d.sysBtns}}:{}),
+    ...(cls==='WINDOW'?{wsFlags:{header:d.wsFlags?.header!==false}, sysBtns:{...d.sysBtns}}:{}),
     ...(d.items?{items:[...d.items]}:{}),
   };
 }
@@ -923,9 +980,21 @@ function toggleGrid(){ S.snapGrid=!S.snapGrid; document.getElementById('btn-grid
 // GEOMETRY
 // ══════════════════════════════════════════════════════════
 const SYS_METRICS = {
-  captionHeight: 20,
-  windowBorderX: 2,
-  windowClientOffsetY: 22,
+  captionHeight: 12,
+  titlebarHeight: 18,
+  titlebarOffset: 2,
+  menuHeight: 10,
+  // Titlebar fine-tune (manual crop/size/offset)
+  titlebarCropL: 0,
+  titlebarCropR: 0,
+  titlebarCropT: 0,
+  titlebarCropB: 0,
+  titlebarSizeW: 0,
+  titlebarSizeH: 0,
+  titlebarOffsetX: 0,
+  titlebarOffsetY: 0,
+  windowBorderX: 1,
+  windowClientOffsetY: 1,
   sysButtonW: 15,
   sysButtonH: 14,
   sysButtonGap: 16,
@@ -935,7 +1004,8 @@ const SYS_METRICS = {
   buttonMinH: 16
 };
 const SYS_PALETTE = {
-  face:'#C0C0C0', light:'#FFFFFF', shadow:'#808080', dark:'#404040', caption:'#000080', captionText:'#FFFFFF'
+  face:'#D4D0C8', light:'#FFFFFF', shadow:'#808080', dark:'#404040',
+  captionStart:'#0A246A', captionEnd:'#A6CAF0', captionText:'#FFFFFF'
 };
 const TB_H=SYS_METRICS.captionHeight, WIN_BX=SYS_METRICS.windowBorderX, WIN_BY=SYS_METRICS.windowClientOffsetY;
 function absRect(n){
@@ -968,33 +1038,51 @@ function drawWindow(n,ox,oy){
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
   if(w<4||h<4)return;
 
-  // Outer 1px black border
-  pp_hline(x,y,w,C.black); pp_hline(x,y+h-1,w,C.black);
-  pp_vline(x,y,h,C.black); pp_vline(x+w-1,y,h,C.black);
+  const showHeader = (n.wsFlags?.header) !== false;
+  const headerH = showHeader ? (SYS_METRICS.captionHeight + SYS_METRICS.menuHeight) : 0;
+  const fy = y - headerH;
+  const fh = h + headerH;
+  drawWin2000WindowFrame(x,fy,w,fh);
 
-  // Window frame fill + 3D raised border (inset 1px)
-  pp_rect(x+1,y+1,w-2,h-2,C.face);
-  pp_raised(x+1,y+1,w-2,h-2);
+  // Client area fill first (чтобы header/меню всегда были поверх)
+  const cy2=y+2;
+  const cw=w-3, ch=Math.max(0,h-4);
+  pp_rect(x+2,cy2,cw,ch,C.face);
 
-  // Title bar (inset by frame = x+2, y+2, w-4, TB_H)
-  pp_titlebar(x+2,y+2,w-4,TB_H);
+  if(showHeader){
+    // Title bar: градиент со смещением +1px от offset
+    const baseTitleY = fy + SYS_METRICS.titlebarOffset + 1;
+    const baseTitleX = x + SYS_METRICS.titlebarOffset + 1;
+    const baseTitleW = Math.max(0, w - (SYS_METRICS.titlebarOffset + 1) * 2);
+    const baseTitleH = SYS_METRICS.titlebarHeight;
+    const titleX = baseTitleX + SYS_METRICS.titlebarCropL + SYS_METRICS.titlebarOffsetX;
+    const titleY = baseTitleY + SYS_METRICS.titlebarCropT + SYS_METRICS.titlebarOffsetY;
+    const titleW = Math.max(0, baseTitleW - SYS_METRICS.titlebarCropL - SYS_METRICS.titlebarCropR + SYS_METRICS.titlebarSizeW);
+    const titleH = Math.max(0, baseTitleH - SYS_METRICS.titlebarCropT - SYS_METRICS.titlebarCropB + SYS_METRICS.titlebarSizeH);
+    pp_titlebar(titleX,titleY,titleW,titleH);
 
-  // Title text (classic flat, no shadow)
-  _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
-  _c.fillStyle=C.captxt; _c.textBaseline='middle';
-  _c.fillText(n.caption,x+6,y+2+TB_H/2);
+    // Title text (classic flat, no shadow)
+    _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
+    _c.fillStyle=SYS_PALETTE.captionText; _c.textBaseline='middle';
+    _c.fillText(n.caption,titleX+3,titleY+Math.max(1,titleH)/2);
+
+    // menu bar only (без File/Edit/View/Tools/Help)
+    const menuY=Math.max(fy+SYS_METRICS.captionHeight, titleY+titleH);
+    pp_rect(x+1,menuY,w-2,SYS_METRICS.menuHeight,SYS_PALETTE.face);
+
+    // stash for sys-buttons alignment with final titlebar rect
+    n.__titleY = titleY;
+  }
 
   // System buttons — right-aligned in titlebar
-  const sb=n.sysBtns||{}; let bx=x+w-4;
-  if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
-  if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
-  if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,y+3,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
-
-  // Client area — sunken inside frame
-  const cy2=y+2+TB_H;
-  const cw=w-4, ch=h-TB_H-4;
-  pp_rect(x+2,cy2,cw,ch,C.face);
-  pp_sunken(x+2,cy2,cw,ch);
+  if(showHeader){
+    const titleY = n.__titleY ?? (fy + SYS_METRICS.titlebarOffset + 1);
+    const sb=n.sysBtns||{}; let bx=x+w-4;
+    if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
+    if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
+    if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
+  }
+  delete n.__titleY;
 
   // Recurse children
   childrenOf(n.id).forEach(c=>drawNode(c,x+WIN_BX,cy2));
@@ -1013,11 +1101,7 @@ function drawPanel(n,ox,oy){
 function drawButton(n,ox,oy){
   const x=~~(n.nx*VW()+ox), y=~~(n.ny*VH()+oy);
   const w=~~(n.nw*VW()), h=~~(n.nh*VH());
-  // Black outer border
-  pp_hline(x,y,w,C.black); pp_hline(x,y+h-1,w,C.black);
-  pp_vline(x,y,h,C.black); pp_vline(x+w-1,y,h,C.black);
-  pp_rect(x+1,y+1,w-2,h-2,C.face);
-  pp_raised(x+1,y+1,w-2,h-2);
+  drawWin2000ButtonFrame(x,y,w,h);
   // Focus rect (1px dotted inner)
   _c.save(); _c.strokeStyle=C.black; _c.lineWidth=1; _c.setLineDash([1,1]);
   _c.strokeRect(x+3.5,y+3.5,w-7,h-7); _c.setLineDash([]); _c.restore();
@@ -1386,33 +1470,31 @@ function p9GridHtml(id,fn,current){
 }
 
 function buildInspector(){
-  const el=document.getElementById('inspector');
-  const n=findNode(S.selectedId);
+  const el = document.getElementById('inspector');
+  const n = findNode(S.selectedId);
   if(!n){el.innerHTML='<div class="no-sel">— Nothing selected —<br><br><span style="font-size:10px">Click an element in the<br>Viewport or Hierarchy</span></div>';return;}
   const H=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const r=(l,v)=>`<div class="pr"><span class="pl">${l}</span><div class="pv">${v}</div></div>`;
   const iT=(k,v)=>`<input type="text" value="${H(String(v))}" oninput="pStr(${n.id},'${k}',this.value)">`;
-  const iP=(k,v)=>`<input type="text" value="${H(fmtP(v))}" oninput="pPct(${n.id},'${k}',this.value)">`;
   const iN=(k,v)=>`<input type="number" value="${H(String(v))}" oninput="pNum(${n.id},'${k}',this.value)">`;
   const ck=(k,v)=>`<input type="checkbox" ${v?'checked':''} onchange="pBool(${n.id},'${k}',this.checked)">`;
   const sl=(k,v)=>{ const o=project.commands.map(c=>`<option value="${c}"${c===v?' selected':''}>${c}</option>`).join(''); return `<select onchange="pStr(${n.id},'${k}',this.value)"><option value=""></option>${o}</select>`; };
   const ro=v=>`<span class="pro">${H(String(v))}</span>`;
-  const pBtn=(label,onclick)=>`<button class="btn" style="font-size:9px;padding:1px 4px" onclick="${onclick}">${label}</button>`;
   let h='';
   h+='<div class="pgh">Identity</div>';
   h+=r('Name',iT('name',n.name)); h+=r('Class',ro(n.cls)); h+=r('Caption',iT('caption',n.caption)); h+=r('Style',iT('style',n.style));
   h+=r('Pos metric',`<select onchange="pMetricMode(${n.id},'pos',this.value)"><option value="percent" ${((n.metricPos||'percent')==='percent')?'selected':''}>percent</option><option value="absolute" ${((n.metricPos||'percent')==='absolute')?'selected':''}>absolute</option></select>`);
   h+=r('Size metric',`<select onchange="pMetricMode(${n.id},'size',this.value)"><option value="percent" ${((n.metricSize||'percent')==='percent')?'selected':''}>percent</option><option value="absolute" ${((n.metricSize||'percent')==='absolute')?'selected':''}>absolute</option></select>`);
-  h+='<div class="pgh">Position &amp; Size</div>';
-  h+=r('<span style="color:#005BFF">X %</span>',`<input type="text" value="${fmtP(n.nx+n.nw/2)}" onchange="pCenter(${n.id},'cx',this.value)">`);
-  h+=r('<span style="color:#0A8A2A">Y %</span>',`<input type="text" value="${fmtP(1-(n.ny+n.nh/2))}" onchange="pCenter(${n.id},'cy',this.value)">`);
-  h+=r('<span style="color:#005BFF">X px</span>',`<input type="text" value="${~~((n.nx+n.nw/2)*VW())}" onchange="pCenterPx(${n.id},'cx',this.value)">`);
-  h+=r('<span style="color:#0A8A2A">Y px</span>',`<input type="text" value="${~~((1-(n.ny+n.nh/2))*VH())}" onchange="pCenterPx(${n.id},'cy',this.value)">`);
-  h+=r('<span style="color:#005BFF">Width %</span>',`<input type="text" value="${fmtP(n.nw)}" onchange="pPct(${n.id},'nw',this.value)">`);
-  h+=r('<span style="color:#0A8A2A">Height %</span>',`<input type="text" value="${fmtP(n.nh)}" onchange="pPct(${n.id},'nh',this.value)">`);
-  h+=r('<span style="color:#005BFF">Width px</span>',`<input type="text" value="${~~(n.nw*VW())}" onchange="pCenterPx(${n.id},'w',this.value)">`);
-  h+=r('<span style="color:#0A8A2A">Height px</span>',`<input type="text" value="${~~(n.nh*VH())}" onchange="pCenterPx(${n.id},'h',this.value)">`);
-  h+=r('<span style="color:#C40000">Z-order</span>',iN('z',n.z));
+  h+='<div class="pgh">Position</div>';
+  h+=`<table class="inspector-table"><tr><th></th><th class="color-x">x</th><th class="color-y">y</th></tr>
+  <tr><td>(%)</td><td><input type="text" value="${fmtP(n.nx+n.nw/2)}" onchange="pCenter(${n.id},'cx',this.value)"></td><td><input type="text" value="${fmtP(1-(n.ny+n.nh/2))}" onchange="pCenter(${n.id},'cy',this.value)"></td></tr>
+  <tr><td>px</td><td><input type="text" value="${~~((n.nx+n.nw/2)*VW())}" onchange="pCenterPx(${n.id},'cx',this.value)"></td><td><input type="text" value="${~~((1-(n.ny+n.nh/2))*VH())}" onchange="pCenterPx(${n.id},'cy',this.value)"></td></tr></table>`;
+  h+='<div class="pgh">Size</div>';
+  h+=`<table class="inspector-table"><tr><th></th><th class="color-w">w</th><th class="color-h">h</th></tr>
+  <tr><td>(%)</td><td><input type="text" value="${fmtP(n.nw)}" onchange="pPct(${n.id},'nw',this.value)"></td><td><input type="text" value="${fmtP(n.nh)}" onchange="pPct(${n.id},'nh',this.value)"></td></tr>
+  <tr><td>px</td><td><input type="text" value="${~~(n.nw*VW())}" onchange="pCenterPx(${n.id},'w',this.value)"></td><td><input type="text" value="${~~(n.nh*VH())}" onchange="pCenterPx(${n.id},'h',this.value)"></td></tr></table>`;
+  h+='<div class="pgh">Order</div>';
+  h+=`<div class="order-block"><label>Layer (Z):</label>${iN('z',n.z)}</div>`;
   h+='<div class="pgh">Pivot</div>';
   h+=r('',p9GridHtml(n.id,'setPivotPoint',p9Name(n.pivot[0],n.pivot[1])));
   h+='<div class="pgh">Anchor</div>';
@@ -1420,6 +1502,7 @@ function buildInspector(){
   h+='<div class="pgh">Flags</div>';
   h+=r('Visible',ck('visible',n.visible)); h+=r('Enabled',ck('enabled',n.enabled));
   if(n.cls==='WINDOW'){
+    h+=r('Header (WS)',`<input type="checkbox" ${((n.wsFlags?.header)!==false)?'checked':''} onchange="pWsFlag(${n.id},'header',this.checked)">`);
     const sb=n.sysBtns||{};
     h+=r('Close',`<input type="checkbox" ${sb.close?'checked':''} onchange="pSysBtn(${n.id},'close',this.checked)">`);
     h+=r('Minimize',`<input type="checkbox" ${sb.minimize?'checked':''} onchange="pSysBtn(${n.id},'minimize',this.checked)">`);
@@ -1494,6 +1577,7 @@ function setAnchorPreset(id,preset){
     draw();updateExport();buildInspector();
   }
 }
+function pWsFlag(id,k,v){ const n=findNode(id); if(!n)return; if(!n.wsFlags)n.wsFlags={header:true}; n.wsFlags[k]=v; draw();updateExport();buildInspector(); }
 function pSysBtn(id,k,v){ const n=findNode(id); if(!n)return; if(!n.sysBtns)n.sysBtns={close:true,minimize:false,maximize:false}; n.sysBtns[k]=v; draw();updateExport(); }
 function pItems(id,v){ const n=findNode(id); if(!n)return; n.items=v.split('\n').map(s=>s.trim()).filter(Boolean); draw();updateExport(); }
 
@@ -1520,7 +1604,12 @@ function exportNode(n){
   if(n.z) L.push(`    z_order      = ${n.z}`);
   if(sf.length) L.push(`    dwStyle      = ${sf.join(' | ')}`);
   if(n.style)   L.push(`    style_class  = ${ev(n.style)}`);
-  if(n.cls==='WINDOW'&&n.sysBtns){ const sb=n.sysBtns,wf=[]; if(sb.close)wf.push('WS_SYSMENU'); if(sb.minimize)wf.push('WS_MINIMIZEBOX'); if(sb.maximize)wf.push('WS_MAXIMIZEBOX'); L.push(`    ws_flags     = ${wf.length?wf.join(' | '):'0'}`); }
+  if(n.cls==='WINDOW'){
+    const wf=[];
+    if((n.wsFlags?.header)!==false) wf.push('WS_HEADER');
+    if(n.sysBtns){ const sb=n.sysBtns; if(sb.close)wf.push('WS_SYSMENU'); if(sb.minimize)wf.push('WS_MINIMIZEBOX'); if(sb.maximize)wf.push('WS_MAXIMIZEBOX'); }
+    L.push(`    ws_flags     = ${wf.length?wf.join(' | '):'0'}`);
+  }
   if(n.onClick)  L.push(`    on_click     = ${ev(n.onClick)}`);
   if(n.onToggle) L.push(`    on_toggle    = ${ev(n.onToggle)}`);
   if(n.cls==='IMAGE'&&n.src) L.push(`    lpszSrc      = ${ev(n.src)}`);
@@ -1556,7 +1645,7 @@ function parseUi(text){
   function parsePair(s){ const pts=s.split(/[\s,x×]+/).filter(Boolean); return[toN(pts[0]||'0',false),toN(pts[1]||'0',true)]; }
   function parseBool(s){ return s==='true'||s==='1'||s==='yes'; }
   function parseItems(s){ const m=s.match(/\[([^\]]*)\]/); return(m?m[1]:s).split(',').map(x=>stripQ(x)).filter(Boolean); }
-  function parseWsF(s){ return{close:s.includes('WS_SYSMENU')||s.includes('WS_CLOSE'),minimize:s.includes('WS_MINIMIZEBOX'),maximize:s.includes('WS_MAXIMIZEBOX')}; }
+  function parseWsF(s){ return{header:s.includes('WS_HEADER'),close:s.includes('WS_SYSMENU')||s.includes('WS_CLOSE'),minimize:s.includes('WS_MINIMIZEBOX'),maximize:s.includes('WS_MAXIMIZEBOX')}; }
   const nameToId={}; let nextId=project.nextId;
   const nodes=rawNodes.map(raw=>{
     const p=raw.props,id=nextId++; nameToId[raw.name]=id;
@@ -1571,7 +1660,11 @@ function parseUi(text){
     const mp = (stripQ(p.metrics_pos||'percent').toLowerCase()==='absolute') ? 'absolute' : 'percent';
     const ms = (stripQ(p.metrics_size||'percent').toLowerCase()==='absolute') ? 'absolute' : 'percent';
     const n={ id,cls,parentId:null,name:raw.name, caption:stripQ(p.caption||p.text||p.label||''), nx,ny,nw,nh,anchor,pivot, visible:p.visible!==undefined?parseBool(p.visible):true, enabled:p.enabled!==undefined?parseBool(p.enabled):true, z:p.z_order||p.z?parseInt(p.z_order||p.z)||0:0, style:stripQ(p.style_class||p.style||''), onClick:stripQ(p.on_click||p.onclick||''), onToggle:stripQ(p.on_toggle||p.ontoggle||''), src:stripQ(p.lpszsrc||p.src||''), metricPos:mp, metricSize:ms, _parentName:p.parent||null };
-    if(cls==='WINDOW')n.sysBtns=p.ws_flags?parseWsF(p.ws_flags):{close:true,minimize:false,maximize:false};
+    if(cls==='WINDOW'){
+      const wf=p.ws_flags?parseWsF(p.ws_flags):{header:true,close:true,minimize:false,maximize:false};
+      n.wsFlags={header:wf.header};
+      n.sysBtns={close:wf.close,minimize:wf.minimize,maximize:wf.maximize};
+    }
     if(cls==='LISTBOX')n.items=p.items?parseItems(p.items):['Item 1','Item 2'];
     clampEvenSize(n);
     return n;
@@ -1774,7 +1867,7 @@ function loadDemo(){
   const N=(px,py,pw,ph)=>({nx:px/800,ny:py/600,nw:pw/800,nh:ph/600});
   const base={visible:true,enabled:true,z:0,style:'',onClick:'',onToggle:'',src:''};
   const w1=project.nextId++;
-  a({id:w1,cls:'WINDOW',parentId:null,name:'wnd_squad',caption:'Squad',...N(20,30,240,240),...base,anchor:[0,0,0,0],pivot:[0,0],sysBtns:{close:true,minimize:true,maximize:false}});
+  a({id:w1,cls:'WINDOW',parentId:null,name:'wnd_squad',caption:'Squad',...N(20,30,240,240),...base,anchor:[0,0,0,0],pivot:[0,0],wsFlags:{header:true},sysBtns:{close:true,minimize:true,maximize:false}});
   a({id:project.nextId++,cls:'LISTBOX',parentId:w1,name:'lst_squad',caption:'',...N(6,6,210,88),...base,anchor:[0,0,1,0],pivot:[0,0],items:['⚔ Knight — Lv.5','🏹 Archer — Lv.3','🔮 Mage — Lv.4','🗡 Rogue — Lv.2']});
   a({id:project.nextId++,cls:'BUTTON',parentId:w1,name:'btn_deploy',caption:'Deploy',...N(6,100,100,23),...base,anchor:[0,0,0,0],pivot:[0,0],onClick:'game.deploy'});
   a({id:project.nextId++,cls:'BUTTON',parentId:w1,name:'btn_dismiss',caption:'Dismiss',...N(112,100,98,23),...base,anchor:[0,0,0,0],pivot:[0,0],onClick:'game.dismiss'});
@@ -1783,7 +1876,7 @@ function loadDemo(){
   a({id:project.nextId++,cls:'STATIC',parentId:w1,name:'lbl_morale',caption:'Morale: High',...N(12,166,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
   a({id:project.nextId++,cls:'STATIC',parentId:w1,name:'lbl_ver',caption:'v0.8-PPTK',...N(6,196,80,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
   const w2=project.nextId++;
-  a({id:w2,cls:'WINDOW',parentId:null,name:'wnd_detail',caption:'Unit Details',...N(278,30,252,248),...base,anchor:[0,0,0,0],pivot:[0.5,0],sysBtns:{close:true,minimize:false,maximize:true}});
+  a({id:w2,cls:'WINDOW',parentId:null,name:'wnd_detail',caption:'Unit Details',...N(278,30,252,248),...base,anchor:[0,0,0,0],pivot:[0.5,0],wsFlags:{header:true},sysBtns:{close:true,minimize:false,maximize:true}});
   a({id:project.nextId++,cls:'IMAGE',parentId:w2,name:'img_portrait',caption:'',...N(6,6,68,90),...base,anchor:[0,0,0,0],pivot:[0.5,1],src:'portrait.png'});
   a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_name',caption:'Sir Aldric',...N(80,6,156,16),...base,anchor:[0,0,1,0],pivot:[0,0]});
   a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_class',caption:'Knight — Level 5',...N(80,24,156,14),...base,anchor:[0,0,1,0],pivot:[0,0]});
@@ -1795,7 +1888,7 @@ function loadDemo(){
   a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_def',caption:'DEF:  12',...N(14,154,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
   a({id:project.nextId++,cls:'STATIC',parentId:w2,name:'lbl_spd',caption:'SPD:  9',...N(14,172,130,14),...base,anchor:[0,0,0,0],pivot:[0,0]});
   const w3=project.nextId++;
-  a({id:w3,cls:'WINDOW',parentId:null,name:'wnd_minimap',caption:'Minimap',...N(548,352,180,150),...base,anchor:[1,1,1,1],pivot:[1,1],sysBtns:{close:true,minimize:false,maximize:false}});
+  a({id:w3,cls:'WINDOW',parentId:null,name:'wnd_minimap',caption:'Minimap',...N(548,352,180,150),...base,anchor:[1,1,1,1],pivot:[1,1],wsFlags:{header:false},sysBtns:{close:true,minimize:false,maximize:false}});
   a({id:project.nextId++,cls:'IMAGE',parentId:w3,name:'img_map',caption:'',...N(4,4,156,100),...base,anchor:[0,0,1,1],pivot:[0.5,0.5],src:'minimap.png'});
   a({id:project.nextId++,cls:'CHECKBOX',parentId:w3,name:'chk_fog',caption:'Fog of war',...N(4,108,140,14),...base,anchor:[0,0,0,0],pivot:[0,0],onToggle:'game.toggle_fog'});
   const p1=project.nextId++;
@@ -1809,10 +1902,27 @@ function loadDemo(){
 // INIT
 // ══════════════════════════════════════════════════════════
 function refresh(){ draw(); buildHierarchy(); buildInspector(); updateExport(); }
+function runEditorAudit(){
+  const issues=[];
+  const byId=new Map();
+  for(const n of project.nodes){
+    if(byId.has(n.id)) issues.push(`Duplicate id: ${n.id}`);
+    byId.set(n.id,n);
+    if(!Number.isFinite(n.nx)||!Number.isFinite(n.ny)||!Number.isFinite(n.nw)||!Number.isFinite(n.nh)) issues.push(`NaN geometry: ${n.name}`);
+    if(n.nw<=0||n.nh<=0) issues.push(`Non-positive size: ${n.name}`);
+    if(n.cls==='WINDOW' && !n.wsFlags) issues.push(`Missing wsFlags on window: ${n.name}`);
+  }
+  for(const n of project.nodes){
+    if(n.parentId!=null && !byId.has(n.parentId)) issues.push(`Broken parentId(${n.parentId}) on ${n.name}`);
+  }
+  if(issues.length) console.warn('UI95 audit issues:', issues);
+  else console.info('UI95 audit: OK');
+}
 loadDemo();
 setMode('select');
 requestAnimationFrame(()=>requestAnimationFrame(resetView));
 refresh();
+runEditorAudit();
 </script>
 </body>
 </html>
