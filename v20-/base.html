@@ -1067,18 +1067,22 @@ function drawWindow(n,ox,oy){
     _c.fillText(n.caption,titleX+3,titleY+Math.max(1,titleH)/2);
 
     // menu bar only (без File/Edit/View/Tools/Help)
-    const menuY=fy+SYS_METRICS.captionHeight;
+    const menuY=Math.max(fy+SYS_METRICS.captionHeight, titleY+titleH);
     pp_rect(x+1,menuY,w-2,SYS_METRICS.menuHeight,SYS_PALETTE.face);
+
+    // stash for sys-buttons alignment with final titlebar rect
+    n.__titleY = titleY;
   }
 
   // System buttons — right-aligned in titlebar
   if(showHeader){
-    const titleY = fy + SYS_METRICS.titlebarOffset + 1;
+    const titleY = n.__titleY ?? (fy + SYS_METRICS.titlebarOffset + 1);
     const sb=n.sysBtns||{}; let bx=x+w-4;
     if(sb.close)   { bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'close');    }
     if(sb.maximize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'maximize'); }
     if(sb.minimize){ bx-=SYS_METRICS.sysButtonGap; pp_sysbtn(bx,titleY+2,SYS_METRICS.sysButtonW,SYS_METRICS.sysButtonH,'minimize'); }
   }
+  delete n.__titleY;
 
   // Recurse children
   childrenOf(n.id).forEach(c=>drawNode(c,x+WIN_BX,cy2));
