@@ -984,6 +984,15 @@ const SYS_METRICS = {
   titlebarHeight: 18,
   titlebarOffset: 2,
   menuHeight: 10,
+  // Titlebar fine-tune (manual crop/size/offset)
+  titlebarCropL: 0,
+  titlebarCropR: 0,
+  titlebarCropT: 0,
+  titlebarCropB: 0,
+  titlebarSizeW: 0,
+  titlebarSizeH: 0,
+  titlebarOffsetX: 0,
+  titlebarOffsetY: 0,
   windowBorderX: 1,
   windowClientOffsetY: 1,
   sysButtonW: 15,
@@ -1042,15 +1051,20 @@ function drawWindow(n,ox,oy){
 
   if(showHeader){
     // Title bar: градиент со смещением +1px от offset
-    const titleY = fy + SYS_METRICS.titlebarOffset + 1;
-    const titleX = x + SYS_METRICS.titlebarOffset + 1;
-    const titleW = Math.max(0, w - (SYS_METRICS.titlebarOffset + 1) * 2);
-    pp_titlebar(titleX,titleY,titleW,SYS_METRICS.titlebarHeight);
+    const baseTitleY = fy + SYS_METRICS.titlebarOffset + 1;
+    const baseTitleX = x + SYS_METRICS.titlebarOffset + 1;
+    const baseTitleW = Math.max(0, w - (SYS_METRICS.titlebarOffset + 1) * 2);
+    const baseTitleH = SYS_METRICS.titlebarHeight;
+    const titleX = baseTitleX + SYS_METRICS.titlebarCropL + SYS_METRICS.titlebarOffsetX;
+    const titleY = baseTitleY + SYS_METRICS.titlebarCropT + SYS_METRICS.titlebarOffsetY;
+    const titleW = Math.max(0, baseTitleW - SYS_METRICS.titlebarCropL - SYS_METRICS.titlebarCropR + SYS_METRICS.titlebarSizeW);
+    const titleH = Math.max(0, baseTitleH - SYS_METRICS.titlebarCropT - SYS_METRICS.titlebarCropB + SYS_METRICS.titlebarSizeH);
+    pp_titlebar(titleX,titleY,titleW,titleH);
 
     // Title text (classic flat, no shadow)
     _c.font='bold 11px "MS Sans Serif","Microsoft Sans Serif",Tahoma,Arial';
     _c.fillStyle=SYS_PALETTE.captionText; _c.textBaseline='middle';
-    _c.fillText(n.caption,titleX+3,titleY+SYS_METRICS.titlebarHeight/2);
+    _c.fillText(n.caption,titleX+3,titleY+Math.max(1,titleH)/2);
 
     // menu bar only (без File/Edit/View/Tools/Help)
     const menuY=fy+SYS_METRICS.captionHeight;
